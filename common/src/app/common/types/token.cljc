@@ -143,6 +143,10 @@
         :gen/gen sg/text}
    token-name-validation-regex])
 
+;; (def node-name-ref
+;;   [:re {:title "TokenNodeNameRef" :gen/gen sg/text}
+;;    token-node-name-validation-regex])
+
 (def schema:token-type
   [::sm/one-of {:decode/json (fn [type]
                                (if (string? type)
