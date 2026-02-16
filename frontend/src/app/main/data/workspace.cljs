@@ -1424,6 +1424,7 @@
 (dm/export dwcp/paste-shapes)
 (dm/export dwcp/paste-data-valid?)
 (dm/export dwcp/copy-link-to-clipboard)
+(dm/export dwcp/copy-as-image)
 
 ;; Drawing
 (dm/export dwd/select-for-drawing)

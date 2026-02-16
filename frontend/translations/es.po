@@ -7322,7 +7322,6 @@ msgstr "Pegar"
 msgid "workspace.shape.menu.paste-props"
 msgstr "Pegar propiedades"
 
-#: src/app/main/ui/workspace/context_menu.cljs:441
 msgid "workspace.shape.menu.path"
 msgstr "Ruta"
 
