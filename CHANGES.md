@@ -5,6 +5,7 @@
 - Replace OpenID with BlenderID
 - Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
 - Option to download custom fonts [Github #8320](https://github.com/penpot/penpot/issues/8320)
+- Add copy as image to clipboard option to workspace context menu [Github #8313](https://github.com/penpot/penpot/pull/8313)
 
 ## 2.14.0 (Unreleased)
 
