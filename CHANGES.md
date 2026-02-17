@@ -3,6 +3,7 @@
 ## Blender changes
 
 - Replace OpenID with BlenderID
+- Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
 
 ## 2.14.0 (Unreleased)
 
