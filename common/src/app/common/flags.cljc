@@ -123,6 +123,7 @@
     :tiered-file-data-storage
     :token-base-font-size
     :token-color
+    :token-import-from-library
     :token-shadow
     :token-tokenscript
     :transit-readable-response
@@ -178,7 +179,8 @@
    :enable-token-color
    :enable-token-shadow
    :enable-inspect-styles
-   :enable-feature-fdata-objects-map])
+   :enable-feature-fdata-objects-map
+   :enable-token-import-from-library])
 
 (defn parse
   [& flags]
