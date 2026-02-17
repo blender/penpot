@@ -1,5 +1,11 @@
 # CHANGELOG
 
+
+## Blender changes
+
+- Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
+- Replace OpenID with BlenderID
+
 ## 2.13.3
 
 ### :bug: Bugs fixed
