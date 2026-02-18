@@ -31,18 +31,56 @@
 (def schema:token-value-generic
   [::sm/text {:error/fn token-value-empty-fn}])
 
+(def schema:token-value-numeric
+  [:and
+   [::sm/text {:error/fn token-value-empty-fn}]
+   [:fn {:error/fn #(tr "workspace.tokens.invalid-value" (:value %))}
+    (fn [value]
+      (if (str/numeric? value)
+        (let [n (d/parse-double value)]
+          (some? n))
+        true))]])  ;; Leave references or formulas to be checked by the resolver
+
+(def schema:token-value-percent
+  [:and
+   [::sm/text {:error/fn token-value-empty-fn}]
+   [:fn {:error/fn #(tr "workspace.tokens.value-with-percent" (:value %))}
+    (fn [value]
+      (if (d/percent? value)
+        (let [v (d/parse-percent value)]
+          (some? v))
+        true))]])  ;; Leave references or formulas to be checked by the resolver
+
 (def schema:token-value-composite-ref
   [::sm/text {:error/fn token-value-empty-fn}])
 
+(def schema:token-value-opacity
+  [:and
+   [::sm/text {:error/fn token-value-empty-fn}]
+   [:fn {:error/fn #(tr "workspace.tokens.opacity-range" (:value %))}
+    (fn [opacity]
+      (if (str/numeric? opacity)
+        (let [n (d/parse-percent opacity)]
+          (and (some? n) (<= 0 n 1)))
+        true))]])  ;; Leave references or formulas to be checked by the resolver
+
 (def schema:token-value-font-family
-  [:vector ::sm/text])
+  [:or
+   [:vector ::sm/text]
+   cto/schema:token-ref])
+
+(def schema:token-value-font-weight
+  [:or
+   [:fn {:error/fn #(tr "workspace.tokens.invalid-font-weight-token-value" (:value %))}
+    cto/valid-font-weight-variant]
+   ::sm/text])  ;; Leave references or formulas to be checked by the resolver
 
 (def schema:token-value-typography-map
   [:map
    [:font-family {:optional true} schema:token-value-font-family]
-   [:font-weight {:optional true} schema:token-value-generic]
-   [:font-size {:optional true} schema:token-value-generic]
-   [:line-height {:optional true} schema:token-value-generic]
+   [:font-size {:optional true} schema:token-value-numeric]
+   [:font-weight {:optional true} schema:token-value-font-weight]
+   [:line-height {:optional true} schema:token-value-percent]
    [:letter-spacing {:optional true} schema:token-value-generic]
    [:paragraph-spacing {:optional true} schema:token-value-generic]
    [:text-decoration {:optional true} schema:token-value-generic]
@@ -61,14 +99,14 @@
     [:blur
      [:and
       :string
-      [:fn {:error/fn #(tr "workspace.tokens.shadow-token-blur-value-error")}
+      [:fn {:error/fn #(tr "workspace.tokens.shadow-token-blur-value-error" (:value %))}
        (fn [blur]
          (let [n (d/parse-double blur)]
            (or (nil? n) (not (< n 0)))))]]]
     [:spread
      [:and
       :string
-      [:fn {:error/fn #(tr "workspace.tokens.shadow-token-spread-value-error")}
+      [:fn {:error/fn #(tr "workspace.tokens.shadow-token-spread-value-error" (:value %))}
        (fn [spread]
          (let [n (d/parse-double spread)]
            (or (nil? n) (not (< n 0)))))]]]
@@ -84,7 +122,10 @@
   [token-type]
   [:multi {:dispatch (constantly token-type)
            :title "Token Value"}
+   [:opacity schema:token-value-opacity]
    [:font-family schema:token-value-font-family]
+   [:font-size schema:token-value-numeric]
+   [:font-weight schema:token-value-font-weight]
    [:typography schema:token-value-typography]
    [:shadow schema:token-value-shadow]
    [::m/default schema:token-value-generic]])
