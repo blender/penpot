@@ -432,6 +432,8 @@ export class WorkspacePage extends BaseWebSocketPage {
       return content !== "";
     }, { timeout: 1000 });
 
+    await this.page.waitForTimeout(3000);
+
   }
 
   /**
@@ -445,7 +447,8 @@ export class WorkspacePage extends BaseWebSocketPage {
       await this.viewport.click({ button: "right" });
       return this.page.getByText("Paste", { exact: true }).click();
     }
-    return this.page.keyboard.press("ControlOrMeta+V");
+    await this.page.keyboard.press("ControlOrMeta+V");
+    await this.page.waitForTimeout(3000);
   }
 
   async panOnViewportAt(x, y, width, height) {
