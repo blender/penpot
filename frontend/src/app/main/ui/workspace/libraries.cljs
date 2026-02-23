@@ -10,13 +10,13 @@
    [app.common.data :as d]
    [app.common.data.macros :as dm]
    [app.common.files.variant :as cfv]
-   [app.common.json :as json]
    [app.common.types.components-list :as ctkl]
    [app.common.types.file :as ctf]
    [app.common.types.library :as ctl]
    [app.common.types.tokens-lib :as ctob]
    [app.common.types.typographies-list :as ctyl]
    [app.common.uuid :as uuid]
+   [app.config :as cf]
    [app.main.data.dashboard :as dd]
    [app.main.data.modal :as modal]
    [app.main.data.notifications :as ntf]
@@ -185,10 +185,9 @@
 
 (defn- has-tokens?
   "Check if library has tokens to be imported"
-  [library]
-  (let [library-data (:data library)
-        tokens-data (get library-data :tokens-lib)]
-    (empty? tokens-data)))
+  [{:keys [data]}]
+  (when-let [tokens-lib (get data :tokens-lib)]
+    (not (ctob/empty-lib? tokens-lib))))
 
 (mf/defc libraries-tab*
   {::mf/props :obj
@@ -240,14 +239,18 @@
                                                        (keep library-names))))
                (sort-by (comp str/lower :name))))
 
-        linked-libraries-ids (mf/with-memo [linked-libraries]
-                               (into #{} (map :id) linked-libraries))
+        linked-libraries-ids
+        (mf/with-memo [linked-libraries]
+          (into #{} d/xf:map-id linked-libraries))
 
+        importing*
+        (mf/use-state nil)
 
-        importing*       (mf/use-state nil)
-        sample-libraries [{:id "penpot-design-system", :name "Design system example"}
-                          {:id "wireframing-kit", :name "Wireframe library"}
-                          {:id "whiteboarding-kit", :name "Whiteboarding Kit"}]
+        sample-libraries
+        (mf/with-memo []
+          [{:id "penpot-design-system", :name "Design system example"}
+           {:id "wireframing-kit", :name "Wireframe library"}
+           {:id "whiteboarding-kit", :name "Whiteboarding Kit"}])
 
 
         change-search-term
@@ -353,10 +356,12 @@
                    :on-click publish}])]
 
        (for [{:keys [id name data connected-to connected-to-names] :as library} linked-libraries]
-         (let [disabled? (some #(contains? linked-libraries-ids %) connected-to)
-               has-tokens (has-tokens? library)
-               import-token-display {:display "none"}]
-           [:div {:class (if has-tokens (stl/css :section-list-item-double-icon) (stl/css :section-list-item))
+         (let [disabled?   (some #(contains? linked-libraries-ids %) connected-to)
+               has-tokens? (and (has-tokens? library)
+                                (contains? cf/flags :token-import-from-library))]
+           [:div {:class (if has-tokens?
+                           (stl/css :section-list-item-double-icon)
+                           (stl/css :section-list-item))
                   :key (dm/str id)
                   :data-testid "library-item"}
             [:div {:class (stl/css :item-content)}
@@ -371,7 +376,7 @@
                     [:span {:class (stl/css :connected-to-values)} (str/join ", " connected-to-names)]
                     [:span ")"]])])]]
 
-            (when has-tokens
+            (when ^boolean has-tokens?
               [:> icon-button*
                {:type "button"
                 :aria-label (tr "workspace.libraries.import-tokens-btn")

@@ -1,9 +1,14 @@
+;; This Source Code Form is subject to the terms of the Mozilla Public
+;; License, v. 2.0. If a copy of the MPL was not distributed with this
+;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+;;
+;; Copyright (c) KALEIDOS INC
+
 (ns app.main.ui.workspace.tokens.import-from-library
   (:require-macros [app.main.style :as stl])
   (:require
    [app.common.data.macros :as dm]
    [app.main.data.modal :as modal]
-   [app.main.data.workspace.libraries :as dwl]
    [app.main.data.workspace.tokens.library-edit :as dwtl]
    [app.main.store :as st]
    [app.main.ui.ds.buttons.button :refer [button*]]
