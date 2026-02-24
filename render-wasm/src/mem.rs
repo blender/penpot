@@ -5,6 +5,24 @@ use std::sync::Mutex;
 const LAYOUT_ALIGN: usize = 4;
 
 static BUFFERU8: Mutex<Option<Vec<u8>>> = Mutex::new(None);
+static BUFFER_ERROR: Mutex<u8> = Mutex::new(0x00);
+
+pub fn clear_error_code() {
+    let mut guard = BUFFER_ERROR.lock().unwrap();
+    *guard = 0x00;
+}
+
+/// Sets the error buffer from a byte. Used by #[wasm_error] when E: Into<u8>.
+pub fn set_error_code(code: u8) {
+    let mut guard = BUFFER_ERROR.lock().unwrap();
+    *guard = code;
+}
+
+#[no_mangle]
+pub extern "C" fn read_error_code() -> u8 {
+    let guard = BUFFER_ERROR.lock().unwrap();
+    *guard
+}
 
 #[no_mangle]
 pub extern "C" fn alloc_bytes(len: usize) -> *mut u8 {

@@ -19,6 +19,7 @@ name = "render_wasm"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.102"
 base64 = "0.22.1"
 bezier-rs = "0.4.0"
 gl = "0.14.0"
@@ -32,6 +33,7 @@ skia-safe = { version = "0.87.0", default-features = false, features = [
   "binary-cache",
   "webp",
 ] }
+thiserror = "2.0.18"
 uuid = { version = "1.11.0", features = ["v4", "js"] }
 
 [profile.release]

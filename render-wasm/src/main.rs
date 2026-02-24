@@ -1,5 +1,6 @@
 #[cfg(target_arch = "wasm32")]
 mod emscripten;
+mod error;
 mod math;
 mod mem;
 mod options;
@@ -14,6 +15,9 @@ mod view;
 mod wapi;
 mod wasm;
 
+#[allow(unused_imports)]
+use crate::error::{Error, Result};
+use macros::wasm_error;
 use math::{Bounds, Matrix};
 use mem::SerializableResult;
 use shapes::{StructureEntry, StructureEntryType, TransformEntry};
@@ -103,10 +107,12 @@ pub extern "C" fn init(width: i32, height: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn set_browser(browser: u8) {
+#[wasm_error]
+pub extern "C" fn set_browser(browser: u8) -> Result<()> {
     with_state_mut!(state, {
         state.set_browser(browser);
     });
+    Ok(())
 }
 
 #[no_mangle]
@@ -131,12 +137,14 @@ pub extern "C" fn set_render_options(debug: u32, dpr: f32) {
 }
 
 #[no_mangle]
-pub extern "C" fn set_canvas_background(raw_color: u32) {
+pub extern "C" fn set_canvas_background(raw_color: u32) -> u8 {
     with_state_mut!(state, {
         let color = skia::Color::new(raw_color);
         state.set_background_color(color);
         state.rebuild_tiles_shallow();
     });
+
+    0x0f
 }
 
 #[no_mangle]
@@ -335,11 +343,13 @@ pub extern "C" fn init_shapes_pool(capacity: usize) {
 }
 
 #[no_mangle]
-pub extern "C" fn use_shape(a: u32, b: u32, c: u32, d: u32) {
+#[wasm_error]
+pub extern "C" fn use_shape(a: u32, b: u32, c: u32, d: u32) -> Result<()> {
     with_state_mut!(state, {
         let id = uuid_from_u32_quartet(a, b, c, d);
         state.use_shape(id);
     });
+    Err(Error::CriticalError(anyhow::anyhow!("Shape not found")))
 }
 
 #[no_mangle]

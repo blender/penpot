@@ -1368,8 +1368,10 @@
   ([base-objects zoom vbox background callback]
    (let [rgba         (sr-clr/hex->u32argb background 1)
          shapes       (into [] (vals base-objects))
-         total-shapes (count shapes)]
-     (h/call wasm/internal-module "_set_canvas_background" rgba)
+         total-shapes (count shapes)
+         result (h/call wasm/internal-module "_set_canvas_background" rgba)]
+     (println "set-canvas-background result:" result)
+     ;; (h/call wasm/internal-module "_set_canvas_background" rgba)
      (h/call wasm/internal-module "_set_view" zoom (- (:x vbox)) (- (:y vbox)))
      (h/call wasm/internal-module "_init_shapes_pool" total-shapes)
      (set-objects base-objects callback))))

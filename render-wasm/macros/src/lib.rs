@@ -6,8 +6,148 @@ use std::sync;
 
 use heck::{ToKebabCase, ToPascalCase};
 use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Block, GenericArgument, ItemFn, ReturnType, Type};
 
 type Result<T> = std::result::Result<T, String>;
+
+/// If the type is std::result::Result<T, E> or core::result::Result<T, E>, returns Some((T, E)).
+/// Otherwise None. The error type E is required to implement std::error::Error and Into<u8>.
+fn std_result_types(ty: &Type) -> Option<(&Type, &Type)> {
+    let path = match ty {
+        Type::Path(tp) => &tp.path,
+        _ => return None,
+    };
+    let segs: Vec<_> = path.segments.iter().collect();
+    if segs.len() < 3 {
+        return None;
+    }
+    let (first, second, last) = (
+        segs[0].ident.to_string(),
+        segs[1].ident.to_string(),
+        &segs[segs.len() - 1],
+    );
+    if last.ident != "Result" {
+        return None;
+    }
+    let ok_std = first == "std" && second == "result";
+    let ok_core = first == "core" && second == "result";
+    if !ok_std && !ok_core {
+        return None;
+    }
+    let args = match &last.arguments {
+        syn::PathArguments::AngleBracketed(a) => &a.args,
+        _ => return None,
+    };
+    if args.len() != 2 {
+        return None;
+    }
+    match (&args[0], &args[1]) {
+        (GenericArgument::Type(t), GenericArgument::Type(e)) => Some((t, e)),
+        _ => None,
+    }
+}
+
+/// If the type is crate::error::Result<T> or a single-segment Result<T> (e.g. with
+/// `use crate::error::Result`), returns Some(T). Otherwise None.
+fn crate_error_result_inner_type(ty: &Type) -> Option<&Type> {
+    let path = match ty {
+        Type::Path(tp) => &tp.path,
+        _ => return None,
+    };
+    let segs: Vec<_> = path.segments.iter().collect();
+    let last = path.segments.last()?;
+    if last.ident != "Result" {
+        return None;
+    }
+    let args = match &last.arguments {
+        syn::PathArguments::AngleBracketed(a) => &a.args,
+        _ => return None,
+    };
+    if args.len() != 1 {
+        return None;
+    }
+    // Accept crate::error::Result<T> or bare Result<T> (from use)
+    let ok = segs.len() == 1
+        || (segs.len() == 3 && segs[0].ident == "crate" && segs[1].ident == "error");
+    if !ok {
+        return None;
+    }
+    match &args[0] {
+        GenericArgument::Type(t) => Some(t),
+        _ => None,
+    }
+}
+
+/// Attribute macro for WASM-exported functions. The function **must** return
+/// `std::result::Result<T, E>` where T is a C ABI type and E implements
+/// `std::error::Error` and `Into<u8>`. The macro:
+/// - Clears the error code at entry.
+/// - Runs the body in `std::panic::catch_unwind`.
+/// - Unwraps the Result: `Ok(x)` → return x; `Err(e)` → set error code in memory and panic
+///   (so ClojureScript can catch the exception and read the code via `read_error_code`).
+/// - On panic from the body: sets critical error code (0x02) and resumes unwind.
+#[proc_macro_attribute]
+pub fn wasm_error(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(item as ItemFn);
+    let body = (*input.block).clone();
+
+    let (attrs, boxed_ty) = match &input.sig.output {
+        ReturnType::Type(attrs, boxed_ty) => (attrs, boxed_ty),
+        ReturnType::Default => {
+            return quote! {
+                compile_error!(
+                    "#[wasm_error] requires the function to return std::result::Result<T, E> where E: std::error::Error + Into<u8>"
+                );
+            }
+            .into();
+        }
+    };
+
+    let (inner_ty, error_ty) = match std_result_types(boxed_ty) {
+        Some((t, e)) => (t, quote!(#e)),
+        None => match crate_error_result_inner_type(boxed_ty) {
+            Some(t) => (t, quote!(crate::error::Error)),
+            None => {
+                return quote! {
+                    compile_error!(
+                        "#[wasm_error] requires the function to return std::result::Result<T, E> (or core::result::Result<T, E>), \
+                         or crate::error::Result<T>. E must implement std::error::Error and Into<u8>. T must be a C ABI type (u32, u8, bool, (), etc.)"
+                    );
+                }
+                .into();
+            }
+        },
+    };
+
+    let block: Block = syn::parse2(quote! {
+        {
+            mem::clear_error_code();
+            let __wasm_err_result = std::panic::catch_unwind(|| -> std::result::Result<#inner_ty, #error_ty> {
+                #body
+            });
+            match __wasm_err_result {
+                Ok(__inner) => match __inner {
+                    Ok(__val) => __val,
+                    Err(__e) => {
+                        let _: &dyn std::error::Error = &__e;
+                        mem::set_error_code(__e.into());
+                        panic!("WASM error");
+                    }
+                },
+                Err(__payload) => {
+                    mem::set_error_code(0x02); // critical, same as Error::Critical
+                    std::panic::resume_unwind(__payload);
+                }
+            }
+        }
+    })
+    .expect("block parse");
+
+    input.sig.output = ReturnType::Type(attrs.clone(), Box::new(inner_ty.clone()));
+    input.block = Box::new(block);
+    quote! { #input }.into()
+}
 
 #[proc_macro_derive(ToJs)]
 pub fn derive_to_cljs(input: TokenStream) -> TokenStream {
