@@ -14,6 +14,7 @@ use skia_safe::{
     textlayout::ParagraphBuilder,
     textlayout::ParagraphStyle,
     textlayout::PositionWithAffinity,
+    textlayout::Affinity,
     Contains,
 };
 
@@ -112,32 +113,53 @@ impl TextContentSize {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct TextPositionWithAffinity {
     #[allow(dead_code)]
     pub position_with_affinity: PositionWithAffinity,
-    pub paragraph: i32,
-    #[allow(dead_code)]
-    pub span: i32,
-    #[allow(dead_code)]
-    pub span_relative_offset: i32,
-    pub offset: i32,
+    pub paragraph: usize,
+    pub offset: usize,
+}
+
+impl PartialEq for TextPositionWithAffinity {
+    fn eq(&self, other: &Self) -> bool {
+        self.paragraph == other.paragraph
+        && self.offset == other.offset
+    }
 }
 
 impl TextPositionWithAffinity {
     pub fn new(
         position_with_affinity: PositionWithAffinity,
-        paragraph: i32,
-        span: i32,
-        span_relative_offset: i32,
-        offset: i32,
+        paragraph: usize,
+        offset: usize,
     ) -> Self {
         Self {
             position_with_affinity,
             paragraph,
-            span,
-            span_relative_offset,
             offset,
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            position_with_affinity: PositionWithAffinity {
+                position: 0,
+                affinity: Affinity::Downstream,
+            },
+            paragraph: 0,
+            offset: 0,
+        }
+    }
+
+    pub fn new_without_affinity(paragraph: usize, offset: usize) -> Self {
+        Self {
+            position_with_affinity: PositionWithAffinity {
+                position: offset as i32,
+                affinity: Affinity::Downstream,
+            },
+            paragraph,
+            offset
         }
     }
 }
@@ -433,10 +455,12 @@ impl TextContent {
         let mut offset_y = 0.0;
         let layout_paragraphs = self.layout.paragraphs.iter().flatten();
 
-        let mut paragraph_index: i32 = -1;
-        let mut span_index: i32 = -1;
+        let mut paragraph_index: usize = 0;
+        // IMPORTANT! I'm keeping this because I think it should be better to have the span index
+        // cached the same way we keep the paragraph index.
+        #[allow(dead_code)]
+        let mut _span_index: usize = 0;
         for layout_paragraph in layout_paragraphs {
-            paragraph_index += 1;
             let start_y = offset_y;
             let end_y = offset_y + layout_paragraph.height();
 
@@ -457,16 +481,15 @@ impl TextContent {
                     // Computed position keeps the current position in terms
                     // of number of characters of text. This is used to know
                     // in which span we are.
-                    let mut computed_position = 0;
-                    let mut span_offset = 0;
+                    let mut computed_position: usize = 0;
+                    let mut span_offset: usize  = 0;
 
                     // If paragraph has no spans, default to span 0, offset 0
                     if paragraph.children().is_empty() {
-                        span_index = 0;
+                        _span_index = 0;
                         span_offset = 0;
                     } else {
                         for span in paragraph.children() {
-                            span_index += 1;
                             let length = span.text.chars().count();
                             let start_position = computed_position;
                             let end_position = computed_position + length;
@@ -483,23 +506,23 @@ impl TextContent {
                                 && end_position >= current_position
                             {
                                 span_offset =
-                                    position_with_affinity.position - start_position as i32;
+                                    position_with_affinity.position as usize - start_position;
                                 break;
                             }
                             computed_position += length;
+                            _span_index += 1;
                         }
                     }
 
                     return Some(TextPositionWithAffinity::new(
                         position_with_affinity,
                         paragraph_index,
-                        span_index,
-                        span_offset,
                         position_with_affinity.position,
                     ));
                 }
             }
             offset_y += layout_paragraph.height();
+            paragraph_index += 1;
         }
 
         // Handle completely empty text shapes: if there are no paragraphs or all paragraphs
@@ -516,9 +539,7 @@ impl TextContent {
             return Some(TextPositionWithAffinity::new(
                 default_position,
                 0, // paragraph 0
-                0, // span 0
                 0, // offset 0
-                0,
             ));
         }
 

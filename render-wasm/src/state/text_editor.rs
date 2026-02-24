@@ -7,34 +7,10 @@ use skia_safe::{
     Color,
 };
 
-/// Cursor position within text content.
-/// Uses character offsets for precise positioning.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
-pub struct TextCursor {
-    pub paragraph: usize,
-    pub char_offset: usize,
-}
-
-impl TextCursor {
-    pub fn new(paragraph: usize, char_offset: usize) -> Self {
-        Self {
-            paragraph,
-            char_offset,
-        }
-    }
-
-    pub fn zero() -> Self {
-        Self {
-            paragraph: 0,
-            char_offset: 0,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TextSelection {
-    pub anchor: TextCursor,
-    pub focus: TextCursor,
+    pub anchor: TextPositionWithAffinity,
+    pub focus: TextPositionWithAffinity,
 }
 
 impl TextSelection {
@@ -42,10 +18,10 @@ impl TextSelection {
         Self::default()
     }
 
-    pub fn from_cursor(cursor: TextCursor) -> Self {
+    pub fn from_position_with_affinity(position: TextPositionWithAffinity) -> Self {
         Self {
-            anchor: cursor,
-            focus: cursor,
+            anchor: position,
+            focus: position,
         }
     }
 
@@ -57,12 +33,12 @@ impl TextSelection {
         !self.is_collapsed()
     }
 
-    pub fn set_caret(&mut self, cursor: TextCursor) {
+    pub fn set_caret(&mut self, cursor: TextPositionWithAffinity) {
         self.anchor = cursor;
         self.focus = cursor;
     }
 
-    pub fn extend_to(&mut self, cursor: TextCursor) {
+    pub fn extend_to(&mut self, cursor: TextPositionWithAffinity) {
         self.focus = cursor;
     }
 
@@ -74,24 +50,24 @@ impl TextSelection {
         self.focus = self.anchor;
     }
 
-    pub fn start(&self) -> TextCursor {
+    pub fn start(&self) -> TextPositionWithAffinity {
         if self.anchor.paragraph < self.focus.paragraph {
             self.anchor
         } else if self.anchor.paragraph > self.focus.paragraph {
             self.focus
-        } else if self.anchor.char_offset <= self.focus.char_offset {
+        } else if self.anchor.offset <= self.focus.offset {
             self.anchor
         } else {
             self.focus
         }
     }
 
-    pub fn end(&self) -> TextCursor {
+    pub fn end(&self) -> TextPositionWithAffinity {
         if self.anchor.paragraph > self.focus.paragraph {
             self.anchor
         } else if self.anchor.paragraph < self.focus.paragraph {
             self.focus
-        } else if self.anchor.char_offset >= self.focus.char_offset {
+        } else if self.anchor.offset >= self.focus.offset {
             self.anchor
         } else {
             self.focus
@@ -102,7 +78,7 @@ impl TextSelection {
 /// Events that the text editor can emit for frontend synchronization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EditorEvent {
+pub enum TextEditorEvent {
     None = 0,
     ContentChanged = 1,
     SelectionChanged = 2,
@@ -131,7 +107,7 @@ pub struct TextEditorState {
     pub active_shape_id: Option<Uuid>,
     pub cursor_visible: bool,
     pub last_blink_time: f64,
-    pending_events: Vec<EditorEvent>,
+    pending_events: Vec<TextEditorEvent>,
 }
 
 impl TextEditorState {
@@ -227,18 +203,16 @@ impl TextEditorState {
         true
     }
 
-    pub fn set_caret_from_position(&mut self, position: TextPositionWithAffinity) {
-        let cursor = TextCursor::new(position.paragraph as usize, position.offset as usize);
-        self.selection.set_caret(cursor);
+    pub fn set_caret_from_position(&mut self, position: &TextPositionWithAffinity) {
+        self.selection.set_caret(*position);
         self.reset_blink();
-        self.push_event(EditorEvent::SelectionChanged);
+        self.push_event(TextEditorEvent::SelectionChanged);
     }
 
-    pub fn extend_selection_from_position(&mut self, position: TextPositionWithAffinity) {
-        let cursor = TextCursor::new(position.paragraph as usize, position.offset as usize);
-        self.selection.extend_to(cursor);
+    pub fn extend_selection_from_position(&mut self, position: &TextPositionWithAffinity) {
+        self.selection.extend_to(*position);
         self.reset_blink();
-        self.push_event(EditorEvent::SelectionChanged);
+        self.push_event(TextEditorEvent::SelectionChanged);
     }
 
     pub fn update_blink(&mut self, timestamp_ms: f64) {
@@ -264,41 +238,17 @@ impl TextEditorState {
         self.last_blink_time = 0.0;
     }
 
-    pub fn push_event(&mut self, event: EditorEvent) {
+    pub fn push_event(&mut self, event: TextEditorEvent) {
         if self.pending_events.last() != Some(&event) {
             self.pending_events.push(event);
         }
     }
 
-    pub fn poll_event(&mut self) -> EditorEvent {
-        self.pending_events.pop().unwrap_or(EditorEvent::None)
+    pub fn poll_event(&mut self) -> TextEditorEvent {
+        self.pending_events.pop().unwrap_or(TextEditorEvent::None)
     }
 
     pub fn has_pending_events(&self) -> bool {
         !self.pending_events.is_empty()
-    }
-
-    pub fn set_caret_position_from(
-        &mut self,
-        text_position_with_affinity: TextPositionWithAffinity,
-    ) {
-        self.set_caret_from_position(text_position_with_affinity);
-    }
-}
-
-/// TODO: Remove legacy code
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct TextNodePosition {
-    pub paragraph: i32,
-    pub span: i32,
-}
-
-impl TextNodePosition {
-    pub fn new(paragraph: i32, span: i32) -> Self {
-        Self { paragraph, span }
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        self.paragraph < 0 || self.span < 0
     }
 }
