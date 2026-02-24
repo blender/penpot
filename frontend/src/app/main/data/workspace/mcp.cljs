@@ -50,11 +50,18 @@
                       ;; TODO: Visual feedback
                       (log/info :hint "MCP STATUS" :status status))}}))))))
 
-(defn init-mcp-connexion
+(defn init-mcp
   []
-  (ptk/reify ::init-mcp-connexion
+  (ptk/reify ::init-mcp
     ptk/EffectEvent
     (effect [_ state _]
       (when (and (contains? cf/flags :mcp)
-                 (-> state :profile :props :mcp-status))
+                 (-> state :profile :props :mcp-enabled))
         (init-mcp!)))))
+
+(defn update-mcp
+  [value]
+  (ptk/reify ::update-mcp
+    ptk/UpdateEvent
+    (update [_ state]
+      (update-in state [:profile :props] assoc :mcp-enabled value))))

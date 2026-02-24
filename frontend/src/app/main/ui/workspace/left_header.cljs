@@ -137,10 +137,9 @@
      (when ^boolean shared?
        [:span {:class (stl/css :shared-badge)} deprecated-icon/library])
      [:div {:class (stl/css :menu-section)}
-      [:& main-menu/menu
-       {:layout layout
-        :file file
-        :profile profile
-        :read-only? read-only?
-        :team-id team-id
-        :page-id page-id}]]]))
+      [:> main-menu/menu* {:layout layout
+                           :file file
+                           :profile profile
+                           :read-only? read-only?
+                           :team-id team-id
+                           :page-id page-id}]]]))
