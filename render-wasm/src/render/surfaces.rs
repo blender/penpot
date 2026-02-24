@@ -457,9 +457,9 @@ impl Surfaces {
         );
 
         let snapshot = self.current.image_snapshot();
-        let mut direct_context = self.current.direct_context();
+        let props = skia::image::RequiredProperties::default();
         let tile_image_opt = snapshot
-            .make_subset(direct_context.as_mut(), rect)
+            .make_subset(None, rect, props)
             .or_else(|| self.current.image_snapshot_with_bounds(rect));
 
         if let Some(tile_image) = tile_image_opt {
