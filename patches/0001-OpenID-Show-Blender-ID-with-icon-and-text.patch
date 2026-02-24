@@ -1,0 +1,473 @@
+From 4b9a0fc4d742b51bc8936d2a24cd00193ae0661d Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Tue, 24 Feb 2026 18:13:27 +0100
+Subject: [PATCH] OpenID: Show Blender ID with icon and text
+
+---
+ frontend/src/app/main/ui/auth/login.cljs                    | 2 +-
+ frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs | 2 +-
+ frontend/src/app/main/ui/icons.cljs                         | 2 +-
+ frontend/translations/af.po                                 | 2 +-
+ frontend/translations/ar.po                                 | 2 +-
+ frontend/translations/ca.po                                 | 2 +-
+ frontend/translations/cs.po                                 | 2 +-
+ frontend/translations/da.po                                 | 2 +-
+ frontend/translations/de.po                                 | 2 +-
+ frontend/translations/en.po                                 | 2 +-
+ frontend/translations/es.po                                 | 2 +-
+ frontend/translations/eu.po                                 | 2 +-
+ frontend/translations/fa.po                                 | 2 +-
+ frontend/translations/fin_FI.po                             | 2 +-
+ frontend/translations/fo.po                                 | 2 +-
+ frontend/translations/fr.po                                 | 2 +-
+ frontend/translations/fr_CA.po                              | 2 +-
+ frontend/translations/gl.po                                 | 2 +-
+ frontend/translations/hi.po                                 | 2 +-
+ frontend/translations/hr.po                                 | 2 +-
+ frontend/translations/it.po                                 | 2 +-
+ frontend/translations/lt.po                                 | 2 +-
+ frontend/translations/nl.po                                 | 2 +-
+ frontend/translations/pl.po                                 | 2 +-
+ frontend/translations/pt.po                                 | 2 +-
+ frontend/translations/pt_BR.po                              | 2 +-
+ frontend/translations/ro.po                                 | 2 +-
+ frontend/translations/ru.po                                 | 2 +-
+ frontend/translations/sr.po                                 | 2 +-
+ frontend/translations/sv.po                                 | 2 +-
+ frontend/translations/th.po                                 | 2 +-
+ frontend/translations/tr.po                                 | 2 +-
+ frontend/translations/zh_Hant.po                            | 2 +-
+ 33 files changed, 33 insertions(+), 33 deletions(-)
+
+diff --git a/frontend/src/app/main/ui/auth/login.cljs b/frontend/src/app/main/ui/auth/login.cljs
+index 63becbc0a..e525a035c 100644
+--- a/frontend/src/app/main/ui/auth/login.cljs
++++ b/frontend/src/app/main/ui/auth/login.cljs
+@@ -239,7 +239,7 @@
+ 
+      (when (contains? cf/flags :login-with-oidc)
+        [:& bl/button-link {:on-click login-with-oidc
+-                           :icon deprecated-icon/brand-openid
++                           :icon deprecated-icon/brand-blender
+                            :label (tr "auth.login-with-oidc-submit")
+                            :class (stl/css :login-btn :btn-oidc-auth)}])]))
+ 
+diff --git a/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs b/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
+index a1b5199aa..1ebcfebc2 100644
+--- a/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
++++ b/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
+@@ -12,7 +12,7 @@
+   (:require
+    [rumext.v2 :as mf]))
+ 
+-(def ^:svg-id brand-openid "brand-openid")
++(def ^:svg-id brand-blender "brand-blender")
+ (def ^:svg-id brand-github "brand-github")
+ (def ^:svg-id brand-gitlab "brand-gitlab")
+ (def ^:svg-id brand-google "brand-google")
+diff --git a/frontend/src/app/main/ui/icons.cljs b/frontend/src/app/main/ui/icons.cljs
+index 3acb7238c..c5e124b58 100644
+--- a/frontend/src/app/main/ui/icons.cljs
++++ b/frontend/src/app/main/ui/icons.cljs
+@@ -21,7 +21,7 @@
+ (def ^:icon logo-subscription (icon-xref :logo-subscription))
+ (def ^:icon logo-subscription-light (icon-xref :logo-subscription-light))
+ 
+-(def ^:icon brand-openid (icon-xref :brand-openid))
++(def ^:icon brand-blender (icon-xref :brand-blender))
+ (def ^:icon brand-github (icon-xref :brand-github))
+ (def ^:icon brand-gitlab (icon-xref :brand-gitlab))
+ (def ^:icon brand-google (icon-xref :brand-google))
+diff --git a/frontend/translations/af.po b/frontend/translations/af.po
+index 68dffbee1..eedeec173 100644
+--- a/frontend/translations/af.po
++++ b/frontend/translations/af.po
+@@ -76,7 +76,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/ar.po b/frontend/translations/ar.po
+index 3832bf087..529b5109b 100644
+--- a/frontend/translations/ar.po
++++ b/frontend/translations/ar.po
+@@ -81,7 +81,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/ca.po b/frontend/translations/ca.po
+index 559e55613..0a67d6d10 100644
+--- a/frontend/translations/ca.po
++++ b/frontend/translations/ca.po
+@@ -80,7 +80,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/cs.po b/frontend/translations/cs.po
+index 25af26a33..b8cf8aba3 100644
+--- a/frontend/translations/cs.po
++++ b/frontend/translations/cs.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/da.po b/frontend/translations/da.po
+index 4414b80be..3aff7a5c2 100644
+--- a/frontend/translations/da.po
++++ b/frontend/translations/da.po
+@@ -76,7 +76,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/de.po b/frontend/translations/de.po
+index 8ffc9da1e..23ca63677 100644
+--- a/frontend/translations/de.po
++++ b/frontend/translations/de.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/en.po b/frontend/translations/en.po
+index fedd5e7e8..49149d0d2 100644
+--- a/frontend/translations/en.po
++++ b/frontend/translations/en.po
+@@ -86,7 +86,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/es.po b/frontend/translations/es.po
+index 40fd3fd30..3144496fa 100644
+--- a/frontend/translations/es.po
++++ b/frontend/translations/es.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/eu.po b/frontend/translations/eu.po
+index 334da4171..77cde4d5d 100644
+--- a/frontend/translations/eu.po
++++ b/frontend/translations/eu.po
+@@ -76,7 +76,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/fa.po b/frontend/translations/fa.po
+index db5800694..19b5bd068 100644
+--- a/frontend/translations/fa.po
++++ b/frontend/translations/fa.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/fin_FI.po b/frontend/translations/fin_FI.po
+index ac18d57d7..e3d922cdd 100644
+--- a/frontend/translations/fin_FI.po
++++ b/frontend/translations/fin_FI.po
+@@ -76,7 +76,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/fo.po b/frontend/translations/fo.po
+index dd118efcb..3e8270b72 100644
+--- a/frontend/translations/fo.po
++++ b/frontend/translations/fo.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/fr.po b/frontend/translations/fr.po
+index 1f8b38942..c4bf144ec 100644
+--- a/frontend/translations/fr.po
++++ b/frontend/translations/fr.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/fr_CA.po b/frontend/translations/fr_CA.po
+index 608ef2577..d5371c1bc 100644
+--- a/frontend/translations/fr_CA.po
++++ b/frontend/translations/fr_CA.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/gl.po b/frontend/translations/gl.po
+index 9bbf03708..abc91c7d0 100644
+--- a/frontend/translations/gl.po
++++ b/frontend/translations/gl.po
+@@ -76,7 +76,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/hi.po b/frontend/translations/hi.po
+index 7e2ff32eb..fd394c89e 100644
+--- a/frontend/translations/hi.po
++++ b/frontend/translations/hi.po
+@@ -88,7 +88,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "openID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/hr.po b/frontend/translations/hr.po
+index 42fb988ca..2a3ad75ee 100644
+--- a/frontend/translations/hr.po
++++ b/frontend/translations/hr.po
+@@ -87,7 +87,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/it.po b/frontend/translations/it.po
+index 8cce20123..2f7d0ff50 100644
+--- a/frontend/translations/it.po
++++ b/frontend/translations/it.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/lt.po b/frontend/translations/lt.po
+index ee8f5349c..05bce2a46 100644
+--- a/frontend/translations/lt.po
++++ b/frontend/translations/lt.po
+@@ -77,7 +77,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/nl.po b/frontend/translations/nl.po
+index 47075fd36..452d075af 100644
+--- a/frontend/translations/nl.po
++++ b/frontend/translations/nl.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/pl.po b/frontend/translations/pl.po
+index 8c8fc68e7..b1c4a230c 100644
+--- a/frontend/translations/pl.po
++++ b/frontend/translations/pl.po
+@@ -77,7 +77,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/pt.po b/frontend/translations/pt.po
+index 79e6a9c2f..c2ef4395f 100644
+--- a/frontend/translations/pt.po
++++ b/frontend/translations/pt.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/pt_BR.po b/frontend/translations/pt_BR.po
+index 19c2ee38d..ed4adc536 100644
+--- a/frontend/translations/pt_BR.po
++++ b/frontend/translations/pt_BR.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/ro.po b/frontend/translations/ro.po
+index f22138543..4cbc07b16 100644
+--- a/frontend/translations/ro.po
++++ b/frontend/translations/ro.po
+@@ -91,7 +91,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/ru.po b/frontend/translations/ru.po
+index 70fb52a9a..2f67631c4 100644
+--- a/frontend/translations/ru.po
++++ b/frontend/translations/ru.po
+@@ -88,7 +88,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/sr.po b/frontend/translations/sr.po
+index f133ab002..ce22741e2 100644
+--- a/frontend/translations/sr.po
++++ b/frontend/translations/sr.po
+@@ -89,7 +89,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/sv.po b/frontend/translations/sv.po
+index 0b20b0e74..840666961 100644
+--- a/frontend/translations/sv.po
++++ b/frontend/translations/sv.po
+@@ -88,7 +88,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/th.po b/frontend/translations/th.po
+index 99a4b410a..9b4fb9f96 100644
+--- a/frontend/translations/th.po
++++ b/frontend/translations/th.po
+@@ -81,7 +81,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/tr.po b/frontend/translations/tr.po
+index 4070c8e46..7a4e21987 100644
+--- a/frontend/translations/tr.po
++++ b/frontend/translations/tr.po
+@@ -90,7 +90,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+diff --git a/frontend/translations/zh_Hant.po b/frontend/translations/zh_Hant.po
+index f991566a3..3fdc37915 100644
+--- a/frontend/translations/zh_Hant.po
++++ b/frontend/translations/zh_Hant.po
+@@ -84,7 +84,7 @@ msgstr "LDAP"
+ 
+ #: src/app/main/ui/auth/login.cljs:243
+ msgid "auth.login-with-oidc-submit"
+-msgstr "OpenID"
++msgstr "Blender ID"
+ 
+ #: src/app/main/ui/auth/recovery.cljs:60
+ msgid "auth.new-password"
+-- 
+2.52.0
+
