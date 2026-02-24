@@ -12,7 +12,7 @@
   (:require
    [rumext.v2 :as mf]))
 
-(def ^:svg-id brand-openid "brand-openid")
+(def ^:svg-id brand-blender "brand-blender")
 (def ^:svg-id brand-github "brand-github")
 (def ^:svg-id brand-gitlab "brand-gitlab")
 (def ^:svg-id brand-google "brand-google")

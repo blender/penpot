@@ -76,7 +76,7 @@ msgstr "LDAP"
 
 #: src/app/main/ui/auth/login.cljs:243
 msgid "auth.login-with-oidc-submit"
-msgstr "OpenID"
+msgstr "Blender ID"
 
 #: src/app/main/ui/auth/recovery.cljs:60
 msgid "auth.new-password"
