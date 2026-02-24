@@ -21,7 +21,7 @@
 (def ^:icon logo-subscription-light (icon-xref :logo-subscription-light))
 (def ^:icon nitrate-welcome (icon-xref :nitrate-welcome))
 
-(def ^:icon brand-openid (icon-xref :brand-openid))
+(def ^:icon brand-blender (icon-xref :brand-blender))
 (def ^:icon brand-github (icon-xref :brand-github))
 (def ^:icon brand-gitlab (icon-xref :brand-gitlab))
 (def ^:icon brand-google (icon-xref :brand-google))
