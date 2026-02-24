@@ -12,6 +12,7 @@
    [app.main.data.workspace.shape-layout :as dwsl]
    [app.main.data.workspace.transforms :as dwt]
    [app.main.store :as st]
+   [app.plugins.flags :refer [natural-child-ordering?]]
    [app.plugins.register :as r]
    [app.plugins.utils :as u]
    [app.util.object :as obj]
@@ -259,10 +260,9 @@
         (u/display-not-valid :appendChild child)
 
         :else
-        (let [child-id  (obj/get child "$id")]
+        (let [child-id (obj/get child "$id")]
           (st/emit! (dwt/move-shapes-to-frame #{child-id} id nil nil)
                     (ptk/data-event :layout/update {:ids [id]})))))))
-
 
 (defn layout-child-proxy? [p]
   (obj/type-of? p "LayoutChildProxy"))
