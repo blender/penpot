@@ -239,7 +239,7 @@
 
      (when (contains? cf/flags :login-with-oidc)
        [:& bl/button-link {:on-click login-with-oidc
-                           :icon deprecated-icon/brand-openid
+                           :icon deprecated-icon/brand-blender
                            :label (tr "auth.login-with-oidc-submit")
                            :class (stl/css :login-btn :btn-oidc-auth)}])]))
 

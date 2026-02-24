@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Blender changes
+
+- Replace OpenID with BlenderID
+
 ## 2.14.0 (Unreleased)
 
 ### :boom: Breaking changes & Deprecations
