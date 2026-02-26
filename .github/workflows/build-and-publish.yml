@@ -1,0 +1,138 @@
+name: Build and Publish
+run-name: Build and publish Penpot Docker images for ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag or ref to build (e.g. 2.13.3 or 2.13.3-blender)'
+        required: true
+  push:
+    tags:
+      - '*'
+
+env:
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+  REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Build all application bundles via the upstream build script.
+  # manage.sh build-bundle produces a bundles/ directory containing
+  # backend/, frontend/ and exporter/ subdirectories.
+  # We upload each as a separate artifact for parallel Docker builds.
+  # -----------------------------------------------------------------------
+  build-bundle:
+    name: Build application bundles
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          fetch-depth: 0
+
+      - name: Build bundle
+        env:
+          # Disable optional outputs we don't need, keeping the build faster.
+          BUILD_WASM: "yes"
+          BUILD_STORYBOOK: "no"
+        run: ./manage.sh build-bundle
+
+      # Upload each component separately so the Docker jobs can run in parallel
+      # and only download the artifact they need.
+      - name: Upload backend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-backend
+          path: bundles/backend/
+          retention-days: 1
+
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-frontend
+          path: bundles/frontend/
+          retention-days: 1
+
+      - name: Upload exporter bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-exporter
+          path: bundles/exporter/
+          retention-days: 1
+
+  # -----------------------------------------------------------------------
+  # Build and push one Docker image per component, in parallel.
+  # Each job downloads its bundle artifact, places it where the Dockerfile
+  # expects it (docker/images/bundle-<component>/), then builds & pushes.
+  # -----------------------------------------------------------------------
+  docker:
+    name: Build and push ${{ matrix.component }} image
+    needs: build-bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: backend
+            dockerfile: docker/images/Dockerfile.backend
+          - component: frontend
+            dockerfile: docker/images/Dockerfile.frontend
+          - component: exporter
+            dockerfile: docker/images/Dockerfile.exporter
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          fetch-depth: 0
+
+      - name: Download ${{ matrix.component }} bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-${{ matrix.component }}
+          # Place it exactly where the Dockerfile COPYs from
+          path: docker/images/bundle-${{ matrix.component }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=${{ env.REF }}
+            type=sha,prefix=
+
+      - name: Build and push ${{ matrix.component }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/images/
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache,mode=max
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:${{ env.REF }}
