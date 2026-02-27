@@ -16,61 +16,8 @@ env:
   REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
 
 jobs:
-  # -----------------------------------------------------------------------
-  # Build all application bundles via the upstream build script.
-  # manage.sh build-bundle produces a bundles/ directory containing
-  # backend/, frontend/ and exporter/ subdirectories.
-  # We upload each as a separate artifact for parallel Docker builds.
-  # -----------------------------------------------------------------------
-  build-bundle:
-    name: Build application bundles
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.REF }}
-          fetch-depth: 0
-
-      - name: Build bundle
-        env:
-          # Disable optional outputs we don't need, keeping the build faster.
-          BUILD_WASM: "yes"
-          BUILD_STORYBOOK: "no"
-        run: ./manage.sh build-bundle
-
-      # Upload each component separately so the Docker jobs can run in parallel
-      # and only download the artifact they need.
-      - name: Upload backend bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-backend
-          path: bundles/backend/
-          retention-days: 1
-
-      - name: Upload frontend bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-frontend
-          path: bundles/frontend/
-          retention-days: 1
-
-      - name: Upload exporter bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-exporter
-          path: bundles/exporter/
-          retention-days: 1
-
-  # -----------------------------------------------------------------------
-  # Build and push one Docker image per component, in parallel.
-  # Each job downloads its bundle artifact, places it where the Dockerfile
-  # expects it (docker/images/bundle-<component>/), then builds & pushes.
-  # -----------------------------------------------------------------------
-  docker:
+  build-and-push:
     name: Build and push ${{ matrix.component }} image
-    needs: build-bundle
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -94,12 +41,11 @@ jobs:
           ref: ${{ env.REF }}
           fetch-depth: 0
 
-      - name: Download ${{ matrix.component }} bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: bundle-${{ matrix.component }}
-          # Place it exactly where the Dockerfile COPYs from
-          path: docker/images/bundle-${{ matrix.component }}
+      - name: Build ${{ matrix.component }} bundle
+        run: ./manage.sh build-${{ matrix.component }}-bundle
+
+      - name: Move bundle into Docker context
+        run: mv bundles/${{ matrix.component }} docker/images/bundle-${{ matrix.component }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -132,7 +78,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache,mode=max
-
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:${{ env.REF }}
