@@ -1,0 +1,204 @@
+From bd7f7f4c6581d7d8fa79aa64fe9e18b328f8200b Mon Sep 17 00:00:00 2001
+From: Andrey Antukh <niwi@niwi.nz>
+Date: Mon, 16 Feb 2026 11:17:02 +0100
+Subject: [PATCH 3/3] :tada: Add copy as image to clipboard menu option (#8364)
+
+cherry-pick from: a278d5442
+
+---
+
+* :sparkles: Copy as image
+
+Function to copy a board directly to the clipboard.
+This is exposed on the Copy/Paste as... context menu.
+
+The image is always copied at 2x to work well with wireframes. I tried
+with and without Retina display and it is better in both scenarios.
+
+Signed-off-by: Dalai Felinto <dalai@blender.org>
+
+* :sparkles: Add minor adjustments on promise creation
+
+* :fire: Remove prn from obj/reify macros
+
+---------
+
+Signed-off-by: Dalai Felinto <dalai@blender.org>
+---
+ CHANGES.md                                    |  1 +
+ frontend/src/app/main/data/workspace.cljs     |  1 +
+ .../app/main/data/workspace/clipboard.cljs    | 52 +++++++++++++++++++
+ .../app/main/ui/workspace/context_menu.cljs   | 14 ++++-
+ frontend/translations/en.po                   | 13 ++++-
+ frontend/translations/es.po                   |  1 -
+ 6 files changed, 78 insertions(+), 4 deletions(-)
+
+diff --git a/CHANGES.md b/CHANGES.md
+index 0d1003ab0..aa7dcb9b6 100644
+--- a/CHANGES.md
++++ b/CHANGES.md
+@@ -3,6 +3,7 @@
+ 
+ ## Blender changes
+ 
++- Add copy as image to clipboard option to workspace context menu [Github #8313](https://github.com/penpot/penpot/pull/8313)
+ - Option to download custom fonts [Github #8320](https://github.com/penpot/penpot/issues/8320)
+ - Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
+ - Replace OpenID with BlenderID
+diff --git a/frontend/src/app/main/data/workspace.cljs b/frontend/src/app/main/data/workspace.cljs
+index 6e71bcf2a..e2f846f7a 100644
+--- a/frontend/src/app/main/data/workspace.cljs
++++ b/frontend/src/app/main/data/workspace.cljs
+@@ -1424,6 +1424,7 @@
+ (dm/export dwcp/paste-shapes)
+ (dm/export dwcp/paste-data-valid?)
+ (dm/export dwcp/copy-link-to-clipboard)
++(dm/export dwcp/copy-as-image)
+ 
+ ;; Drawing
+ (dm/export dwd/select-for-drawing)
+diff --git a/frontend/src/app/main/data/workspace/clipboard.cljs b/frontend/src/app/main/data/workspace/clipboard.cljs
+index 2692eef10..9c9064384 100644
+--- a/frontend/src/app/main/data/workspace/clipboard.cljs
++++ b/frontend/src/app/main/data/workspace/clipboard.cljs
+@@ -1039,3 +1039,55 @@
+     ptk/WatchEvent
+     (watch [_ _ _]
+       (clipboard/to-clipboard (rt/get-current-href)))))
++
++(defn copy-as-image
++  []
++  (ptk/reify ::copy-as-image
++    ptk/WatchEvent
++    (watch [_ state _]
++      (let [file-id  (:current-file-id state)
++            page-id  (:current-page-id state)
++            selected (first (dsh/lookup-selected state))
++
++            export {:file-id file-id
++                    :page-id page-id
++                    :object-id selected
++                    ;; webp would be preferrable, but PNG is the most supported image MIME type by clipboard APIs.
++                    :type :png
++                    ;; Always use 2 to ensure good enough quality for wireframes.
++                    :scale 2
++                    :suffix ""
++                    :enabled true
++                    :name ""}
++
++            params {:exports [export]
++                    :profile-id (:profile-id state)
++                    :cmd :export-shapes
++                    :wait true}]
++
++        (rx/concat
++         ;; Ensure current state persisted before exporting.
++         (rx/of ::dps/force-persist)
++         (->> (rx/from-atom refs/persistence-state {:emit-current-value? true})
++              (rx/filter #(or (nil? %) (= :saved %)))
++              (rx/first)
++              (rx/timeout 400 (rx/empty)))
++
++         ;; Exporting itself can time its time, better to notify that we are busy.
++         (rx/of (ntf/info (tr "workspace.clipboard.copying")))
++
++         ;; Call exporter to get image URI, then fetch and copy blob.
++         (->> (rp/cmd! :export params)
++              (rx/mapcat (fn [{:keys [uri]}]
++                           (http/send! {:method :get
++                                        :uri uri
++                                        :response-type :blob})))
++              (rx/map :body)
++              (rx/tap (fn [blob]
++                        (clipboard/to-clipboard-promise "image/png" (p/resolved blob))))
++              (rx/map (fn [_]
++                        (ntf/success (tr "workspace.clipboard.image-copied"))))
++              (rx/catch (fn [e]
++                          (js/console.error "clipboard blocked:" e)
++                          (ntf/error (tr "workspace.clipboard.image-copy-failed"))
++                          (rx/empty)))))))))
+diff --git a/frontend/src/app/main/ui/workspace/context_menu.cljs b/frontend/src/app/main/ui/workspace/context_menu.cljs
+index 75caa6318..a32dde40b 100644
+--- a/frontend/src/app/main/ui/workspace/context_menu.cljs
++++ b/frontend/src/app/main/ui/workspace/context_menu.cljs
+@@ -150,7 +150,9 @@
+   {::mf/props :obj
+    ::mf/private true}
+   [{:keys [shapes]}]
+-  (let [do-copy           #(st/emit! (dw/copy-selected))
++  (let [multiple?         (> (count shapes) 1)
++
++        do-copy           #(st/emit! (dw/copy-selected))
+         do-copy-link      #(st/emit! (dw/copy-link-to-clipboard))
+ 
+         do-cut            #(st/emit! (dw/copy-selected)
+@@ -178,6 +180,9 @@
+         handle-copy-text
+         (mf/use-callback #(st/emit! (dw/copy-selected-text)))
+ 
++        handle-copy-as-image
++        (mf/use-callback #(st/emit! (dw/copy-as-image)))
++
+         handle-hover-copy-paste
+         (mf/use-callback
+          (fn []
+@@ -222,6 +227,11 @@
+       [:> menu-entry* {:title (tr "workspace.shape.menu.copy-svg")
+                        :on-click handle-copy-svg}]
+ 
++      (when (some cfh/frame-shape? shapes)
++        [:> menu-entry* {:title (tr "workspace.shape.menu.copy-as-image")
++                         :disabled multiple?
++                         :on-click handle-copy-as-image}])
++
+       [:> menu-separator* {}]
+ 
+       [:> menu-entry* {:title (tr "workspace.shape.menu.copy-text")
+@@ -229,7 +239,7 @@
+ 
+       [:> menu-entry* {:title (tr "workspace.shape.menu.copy-props")
+                        :shortcut (sc/get-tooltip :copy-props)
+-                       :disabled (> (count shapes) 1)
++                       :disabled multiple?
+                        :on-click handle-copy-props}]
+       [:> menu-entry* {:title (tr "workspace.shape.menu.paste-props")
+                        :shortcut (sc/get-tooltip :paste-props)
+diff --git a/frontend/translations/en.po b/frontend/translations/en.po
+index 28e0783ab..04503ec6a 100644
+--- a/frontend/translations/en.po
++++ b/frontend/translations/en.po
+@@ -7342,7 +7342,18 @@ msgstr "Paste"
+ msgid "workspace.shape.menu.paste-props"
+ msgstr "Paste properties"
+ 
+-#: src/app/main/ui/workspace/context_menu.cljs:441
++msgid "workspace.shape.menu.copy-as-image"
++msgstr "Copy as image"
++
++msgid "workspace.clipboard.copying"
++msgstr "Copying image…"
++
++msgid "workspace.clipboard.image-copied"
++msgstr "Image copied to the clipboard"
++
++msgid "workspace.clipboard.image-copy-failed"
++msgstr "Error copying image"
++
+ msgid "workspace.shape.menu.path"
+ msgstr "Path"
+ 
+diff --git a/frontend/translations/es.po b/frontend/translations/es.po
+index 0b2f2245e..e4f7ce6a7 100644
+--- a/frontend/translations/es.po
++++ b/frontend/translations/es.po
+@@ -7322,7 +7322,6 @@ msgstr "Pegar"
+ msgid "workspace.shape.menu.paste-props"
+ msgstr "Pegar propiedades"
+ 
+-#: src/app/main/ui/workspace/context_menu.cljs:441
+ msgid "workspace.shape.menu.path"
+ msgstr "Ruta"
+ 
+-- 
+2.45.2
+
