@@ -1,36 +1,28 @@
-From f5eed8b3a9f55b522952dcbfd6e62bdd680d9704 Mon Sep 17 00:00:00 2001
+From 8101e8a387ca79b106e5f93f8a7539fb9a493226 Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
 Date: Tue, 10 Feb 2026 23:31:32 +0100
-Subject: [PATCH 2/3] :sparkles: Add option to download user uploaded custom
+Subject: [PATCH 3/4] sparkles: Add option to download user uploaded custom
  fonts
 
 cherry-pick from: c55c23c6d
-
----
-
-Allow users download any of the manually installed fonts.
-When there is more than one font in the family download as a .zip.
-
-Signed-off-by: Dalai Felinto <dalai@blender.org>
 ---
  CHANGES.md                                    |  1 +
  backend/src/app/rpc/commands/fonts.clj        | 96 ++++++++++++++++++-
  frontend/src/app/main/ui/dashboard/fonts.cljs | 38 +++++++-
- frontend/translations/en.po                   |  4 +-
- frontend/translations/es.po                   |  1 -
- 5 files changed, 135 insertions(+), 5 deletions(-)
+ frontend/translations/en.po                   |  3 +
+ 4 files changed, 135 insertions(+), 3 deletions(-)
 
 diff --git a/CHANGES.md b/CHANGES.md
-index 5be36b6e5..0d1003ab0 100644
+index bf249240e..1d0a8cb2c 100644
 --- a/CHANGES.md
 +++ b/CHANGES.md
-@@ -3,6 +3,7 @@
+@@ -4,6 +4,7 @@
  
- ## Blender changes
- 
-+- Option to download custom fonts [Github #8320](https://github.com/penpot/penpot/issues/8320)
- - Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
  - Replace OpenID with BlenderID
+ - Import Tokens from linked library [Github #8391](https://github.com/penpot/penpot/pull/8391)
++- Option to download custom fonts [Github #8320](https://github.com/penpot/penpot/issues/8320)
+ 
+ ## 2.14.0 (Unreleased)
  
 diff --git a/backend/src/app/rpc/commands/fonts.clj b/backend/src/app/rpc/commands/fonts.clj
 index 03c66a968..f646342cc 100644
@@ -228,32 +220,19 @@ index f84d69489..26794f8c2 100644
  
  (mf/defc installed-fonts*
 diff --git a/frontend/translations/en.po b/frontend/translations/en.po
-index 3384f0ca1..28e0783ab 100644
+index 450cc5015..5d98a227c 100644
 --- a/frontend/translations/en.po
 +++ b/frontend/translations/en.po
-@@ -2183,7 +2183,9 @@ msgstr "Discard"
- msgid "labels.download"
+@@ -2369,6 +2369,9 @@ msgid "labels.download"
  msgstr "Download %s"
  
--#: src/app/main/ui/dashboard/file_menu.cljs:30, src/app/main/ui/dashboard/files.cljs:80, src/app/main/ui/dashboard/files.cljs:179, src/app/main/ui/dashboard/projects.cljs:228, src/app/main/ui/dashboard/projects.cljs:232, src/app/main/ui/dashboard/sidebar.cljs:726
+ #: src/app/main/ui/dashboard/file_menu.cljs:30, src/app/main/ui/dashboard/files.cljs:80, src/app/main/ui/dashboard/files.cljs:179, src/app/main/ui/dashboard/projects.cljs:229, src/app/main/ui/dashboard/projects.cljs:233, src/app/main/ui/dashboard/sidebar.cljs:820
 +msgid "labels.download-simple"
 +msgstr "Download"
 +
  msgid "labels.drafts"
  msgstr "Drafts"
  
-diff --git a/frontend/translations/es.po b/frontend/translations/es.po
-index 40fd3fd30..0b2f2245e 100644
---- a/frontend/translations/es.po
-+++ b/frontend/translations/es.po
-@@ -2156,7 +2156,6 @@ msgstr "Descartar"
- msgid "labels.download"
- msgstr "Descargar %s"
- 
--#: src/app/main/ui/dashboard/file_menu.cljs:30, src/app/main/ui/dashboard/files.cljs:80, src/app/main/ui/dashboard/files.cljs:179, src/app/main/ui/dashboard/projects.cljs:228, src/app/main/ui/dashboard/projects.cljs:232, src/app/main/ui/dashboard/sidebar.cljs:726
- msgid "labels.drafts"
- msgstr "Borradores"
- 
 -- 
-2.45.2
+2.53.0
 
