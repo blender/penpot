@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Tag or ref to build (e.g. 2.13.3 or 2.13.3-blender)'
+        description: 'Tag or ref to build (e.g. 2.14.0 or 2.14.0-blender)'
         required: true
   push:
     tags:
