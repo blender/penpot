@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Upstream Penpot version tag (e.g. 2.14.0)'
+        description: 'Upstream Penpot version tag (e.g. 2.15.4)'
         required: true
-        default: '2.14.0'
+        default: '2.15.4'
       suffix:
         description: 'Optional image tag suffix (e.g. -blender)'
         default: ''
