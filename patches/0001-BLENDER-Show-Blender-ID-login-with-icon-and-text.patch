@@ -1,7 +1,7 @@
-From e929e8526345d9b5a3aa4be44c962d17fc6f9ea8 Mon Sep 17 00:00:00 2001
+From bf410d1efb2095872d7b1ffeb575960f6f89f4fa Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Tue, 24 Feb 2026 18:13:27 +0100
-Subject: [PATCH 1/4] OpenID: Show Blender ID with icon and text
+Subject: [PATCH 1/2] BLENDER: Show Blender ID login with icon and text
 
 ---
  .../resources/images/assets/brand-blender.svg  | 18 ++++++++++++++++++
@@ -47,7 +47,7 @@ Subject: [PATCH 1/4] OpenID: Show Blender ID with icon and text
 
 diff --git a/frontend/resources/images/assets/brand-blender.svg b/frontend/resources/images/assets/brand-blender.svg
 new file mode 100644
-index 000000000..8b883a7e3
+index 0000000000..8b883a7e30
 --- /dev/null
 +++ b/frontend/resources/images/assets/brand-blender.svg
 @@ -0,0 +1,18 @@
@@ -71,7 +71,7 @@ index 000000000..8b883a7e3
 +</svg>
 diff --git a/frontend/resources/images/icons/brand-blender.svg b/frontend/resources/images/icons/brand-blender.svg
 new file mode 100644
-index 000000000..8b883a7e3
+index 0000000000..8b883a7e30
 --- /dev/null
 +++ b/frontend/resources/images/icons/brand-blender.svg
 @@ -0,0 +1,18 @@
@@ -95,27 +95,27 @@ index 000000000..8b883a7e3
 +</svg>
 diff --git a/frontend/resources/images/icons/brand-openid.svg b/frontend/resources/images/icons/brand-openid.svg
 deleted file mode 100644
-index 28dd05ed8..000000000
+index 28dd05ed85..0000000000
 --- a/frontend/resources/images/icons/brand-openid.svg
 +++ /dev/null
 @@ -1 +0,0 @@
 -<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16"><g fill="#000"><path fill="#b2b2b2" d="M7.339 13.094v.207c-2.477-.311-4.354-1.669-4.354-3.305 0-1.229 1.058-2.3 2.64-2.891l-.062-1.48C2.778 6.328.813 8.019.813 9.996c0 2.384 2.839 4.348 6.529 4.678h.001l-.004-1.58Z" class="fills"/><path fill="#f7931e" d="M9.524 13.647ZL9.521 1.326 7.339 2.445v4.482h.004v7.747Z" class="fills"/><path fill="#b2b2b2" d="m15.187 9.123-.295-3.128-1.123.635c-.798-.485-1.816-1.083-3.144-1.091v1.372c.11.031.216.064.322.098.442.144.849.324 1.208.535l-1.181.664 4.213.915Z" class="fills"/></g></svg>
 \ No newline at end of file
 diff --git a/frontend/src/app/main/ui/auth/login.cljs b/frontend/src/app/main/ui/auth/login.cljs
-index 63becbc0a..e525a035c 100644
+index 62f8f9f2a7..90c15ef4d2 100644
 --- a/frontend/src/app/main/ui/auth/login.cljs
 +++ b/frontend/src/app/main/ui/auth/login.cljs
-@@ -239,7 +239,7 @@
+@@ -238,7 +238,7 @@
  
       (when (contains? cf/flags :login-with-oidc)
         [:& bl/button-link {:on-click login-with-oidc
 -                           :icon deprecated-icon/brand-openid
 +                           :icon deprecated-icon/brand-blender
-                            :label (tr "auth.login-with-oidc-submit")
+                            :label (or (not-empty cf/oidc-name) (tr "auth.login-with-oidc-submit"))
                             :class (stl/css :login-btn :btn-oidc-auth)}])]))
  
 diff --git a/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs b/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
-index 428d582e9..cedb5f954 100644
+index 4d8fbb604e..29691adb95 100644
 --- a/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
 +++ b/frontend/src/app/main/ui/ds/foundations/assets/raw_svg.cljs
 @@ -12,7 +12,7 @@
@@ -128,12 +128,12 @@ index 428d582e9..cedb5f954 100644
  (def ^:svg-id brand-gitlab "brand-gitlab")
  (def ^:svg-id brand-google "brand-google")
 diff --git a/frontend/src/app/main/ui/icons.cljs b/frontend/src/app/main/ui/icons.cljs
-index f5ca0d911..34a6ac875 100644
+index b5513512d9..1bb620e1a6 100644
 --- a/frontend/src/app/main/ui/icons.cljs
 +++ b/frontend/src/app/main/ui/icons.cljs
-@@ -20,7 +20,7 @@
- (def ^:icon logo-subscription (icon-xref :logo-subscription))
+@@ -21,7 +21,7 @@
  (def ^:icon logo-subscription-light (icon-xref :logo-subscription-light))
+ (def ^:icon nitrate-welcome (icon-xref :nitrate-welcome))
  
 -(def ^:icon brand-openid (icon-xref :brand-openid))
 +(def ^:icon brand-blender (icon-xref :brand-blender))
@@ -141,7 +141,7 @@ index f5ca0d911..34a6ac875 100644
  (def ^:icon brand-gitlab (icon-xref :brand-gitlab))
  (def ^:icon brand-google (icon-xref :brand-google))
 diff --git a/frontend/translations/af.po b/frontend/translations/af.po
-index 0efb844d7..89872e313 100644
+index 0efb844d7b..89872e3139 100644
 --- a/frontend/translations/af.po
 +++ b/frontend/translations/af.po
 @@ -76,7 +76,7 @@ msgstr "LDAP"
@@ -154,7 +154,7 @@ index 0efb844d7..89872e313 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/ar.po b/frontend/translations/ar.po
-index 75c07dcf3..5a3ab46cb 100644
+index 74f6695812..a6a9c41372 100644
 --- a/frontend/translations/ar.po
 +++ b/frontend/translations/ar.po
 @@ -81,7 +81,7 @@ msgstr "LDAP"
@@ -167,7 +167,7 @@ index 75c07dcf3..5a3ab46cb 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/ca.po b/frontend/translations/ca.po
-index 586495e0a..f59741980 100644
+index dcbe371cc6..01260ecf39 100644
 --- a/frontend/translations/ca.po
 +++ b/frontend/translations/ca.po
 @@ -80,7 +80,7 @@ msgstr "LDAP"
@@ -180,7 +180,7 @@ index 586495e0a..f59741980 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/cs.po b/frontend/translations/cs.po
-index a39f7dc50..441a43c90 100644
+index 608d6955c5..0cbccada47 100644
 --- a/frontend/translations/cs.po
 +++ b/frontend/translations/cs.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -193,7 +193,7 @@ index a39f7dc50..441a43c90 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/da.po b/frontend/translations/da.po
-index 88d15a6dc..2b9d0b5a6 100644
+index 88d15a6dc9..2b9d0b5a6e 100644
 --- a/frontend/translations/da.po
 +++ b/frontend/translations/da.po
 @@ -76,7 +76,7 @@ msgstr "LDAP"
@@ -206,7 +206,7 @@ index 88d15a6dc..2b9d0b5a6 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/de.po b/frontend/translations/de.po
-index 8a97b44d4..5e2158396 100644
+index e2189b6732..1b1f99fa7a 100644
 --- a/frontend/translations/de.po
 +++ b/frontend/translations/de.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -219,7 +219,7 @@ index 8a97b44d4..5e2158396 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/en.po b/frontend/translations/en.po
-index a39cfaf85..23edcd6c3 100644
+index b8f58e1f9c..c488a0059e 100644
 --- a/frontend/translations/en.po
 +++ b/frontend/translations/en.po
 @@ -86,7 +86,7 @@ msgstr "LDAP"
@@ -232,7 +232,7 @@ index a39cfaf85..23edcd6c3 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/es.po b/frontend/translations/es.po
-index f30b9e12e..31321519c 100644
+index 19baa238c5..9d36082a7f 100644
 --- a/frontend/translations/es.po
 +++ b/frontend/translations/es.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -245,7 +245,7 @@ index f30b9e12e..31321519c 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/eu.po b/frontend/translations/eu.po
-index 0e785e852..fa077ed41 100644
+index 91d0b2fdc8..919601eb46 100644
 --- a/frontend/translations/eu.po
 +++ b/frontend/translations/eu.po
 @@ -76,7 +76,7 @@ msgstr "LDAP"
@@ -258,7 +258,7 @@ index 0e785e852..fa077ed41 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/fa.po b/frontend/translations/fa.po
-index 55e50951d..25e11533b 100644
+index 1d253083e5..1966349bbe 100644
 --- a/frontend/translations/fa.po
 +++ b/frontend/translations/fa.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -271,7 +271,7 @@ index 55e50951d..25e11533b 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/fin_FI.po b/frontend/translations/fin_FI.po
-index 874b0eeda..f365746eb 100644
+index 874b0eeda3..f365746ebd 100644
 --- a/frontend/translations/fin_FI.po
 +++ b/frontend/translations/fin_FI.po
 @@ -76,7 +76,7 @@ msgstr "LDAP"
@@ -284,7 +284,7 @@ index 874b0eeda..f365746eb 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/fo.po b/frontend/translations/fo.po
-index d6770eeb8..8c08a3d7c 100644
+index d6770eeb86..8c08a3d7c1 100644
 --- a/frontend/translations/fo.po
 +++ b/frontend/translations/fo.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -297,7 +297,7 @@ index d6770eeb8..8c08a3d7c 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/fr.po b/frontend/translations/fr.po
-index 58f4dda30..091de58a0 100644
+index e8923f08fb..6496a89da3 100644
 --- a/frontend/translations/fr.po
 +++ b/frontend/translations/fr.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -310,7 +310,7 @@ index 58f4dda30..091de58a0 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/fr_CA.po b/frontend/translations/fr_CA.po
-index 77a8dd2e6..d2828b5f8 100644
+index f422818ec9..3f7e85750b 100644
 --- a/frontend/translations/fr_CA.po
 +++ b/frontend/translations/fr_CA.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -323,7 +323,7 @@ index 77a8dd2e6..d2828b5f8 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/gl.po b/frontend/translations/gl.po
-index bbd5cf8b6..38705663d 100644
+index caa3ecd2fb..1fa9ce5459 100644
 --- a/frontend/translations/gl.po
 +++ b/frontend/translations/gl.po
 @@ -76,7 +76,7 @@ msgstr "LDAP"
@@ -336,7 +336,7 @@ index bbd5cf8b6..38705663d 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/hi.po b/frontend/translations/hi.po
-index 7bcf35270..204e083a7 100644
+index 933edb12f8..e05cc49265 100644
 --- a/frontend/translations/hi.po
 +++ b/frontend/translations/hi.po
 @@ -88,7 +88,7 @@ msgstr "LDAP"
@@ -349,7 +349,7 @@ index 7bcf35270..204e083a7 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/hr.po b/frontend/translations/hr.po
-index c9e39a10a..f26419c3b 100644
+index a9cb949f94..5585b23a34 100644
 --- a/frontend/translations/hr.po
 +++ b/frontend/translations/hr.po
 @@ -87,7 +87,7 @@ msgstr "LDAP"
@@ -362,7 +362,7 @@ index c9e39a10a..f26419c3b 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/it.po b/frontend/translations/it.po
-index 1358ef1f5..418bd5b35 100644
+index da39defaa7..e1c501310e 100644
 --- a/frontend/translations/it.po
 +++ b/frontend/translations/it.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -375,7 +375,7 @@ index 1358ef1f5..418bd5b35 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/lt.po b/frontend/translations/lt.po
-index 506272cbb..b63d7b7da 100644
+index 2285c4117f..c9b1a91a4a 100644
 --- a/frontend/translations/lt.po
 +++ b/frontend/translations/lt.po
 @@ -77,7 +77,7 @@ msgstr "LDAP"
@@ -388,7 +388,7 @@ index 506272cbb..b63d7b7da 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/nl.po b/frontend/translations/nl.po
-index f1150666b..7895eff20 100644
+index 7dadd3c0e5..3a25b360da 100644
 --- a/frontend/translations/nl.po
 +++ b/frontend/translations/nl.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -401,7 +401,7 @@ index f1150666b..7895eff20 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/pl.po b/frontend/translations/pl.po
-index a0e4c914e..d0649fe7c 100644
+index 2702370471..37c33af7bd 100644
 --- a/frontend/translations/pl.po
 +++ b/frontend/translations/pl.po
 @@ -77,7 +77,7 @@ msgstr "LDAP"
@@ -414,7 +414,7 @@ index a0e4c914e..d0649fe7c 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/pt.po b/frontend/translations/pt.po
-index 345170b50..99c42c161 100644
+index 345170b509..99c42c1612 100644
 --- a/frontend/translations/pt.po
 +++ b/frontend/translations/pt.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -427,7 +427,7 @@ index 345170b50..99c42c161 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/pt_BR.po b/frontend/translations/pt_BR.po
-index b9038d196..6a73e55d7 100644
+index 79f37c8429..fd94efdabe 100644
 --- a/frontend/translations/pt_BR.po
 +++ b/frontend/translations/pt_BR.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -440,7 +440,7 @@ index b9038d196..6a73e55d7 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/ro.po b/frontend/translations/ro.po
-index f1f7a3bdb..c30ad85cf 100644
+index b67998552c..cdce3e2c25 100644
 --- a/frontend/translations/ro.po
 +++ b/frontend/translations/ro.po
 @@ -91,7 +91,7 @@ msgstr "LDAP"
@@ -453,7 +453,7 @@ index f1f7a3bdb..c30ad85cf 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/ru.po b/frontend/translations/ru.po
-index 0f0b3ec78..59aed7cc8 100644
+index f2227fcd59..941383bfba 100644
 --- a/frontend/translations/ru.po
 +++ b/frontend/translations/ru.po
 @@ -88,7 +88,7 @@ msgstr "LDAP"
@@ -466,7 +466,7 @@ index 0f0b3ec78..59aed7cc8 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/sr.po b/frontend/translations/sr.po
-index aeea10472..22042bbb4 100644
+index 22088ebf84..4f5d651f91 100644
 --- a/frontend/translations/sr.po
 +++ b/frontend/translations/sr.po
 @@ -89,7 +89,7 @@ msgstr "LDAP"
@@ -479,7 +479,7 @@ index aeea10472..22042bbb4 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/sv.po b/frontend/translations/sv.po
-index 4f2213536..c2d4fc1be 100644
+index 38f4e9098a..a8b08caab8 100644
 --- a/frontend/translations/sv.po
 +++ b/frontend/translations/sv.po
 @@ -88,7 +88,7 @@ msgstr "LDAP"
@@ -492,7 +492,7 @@ index 4f2213536..c2d4fc1be 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/th.po b/frontend/translations/th.po
-index 43fc21a9f..30ada951f 100644
+index 43fc21a9f1..30ada951f3 100644
 --- a/frontend/translations/th.po
 +++ b/frontend/translations/th.po
 @@ -81,7 +81,7 @@ msgstr "LDAP"
@@ -505,7 +505,7 @@ index 43fc21a9f..30ada951f 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/tr.po b/frontend/translations/tr.po
-index b2095b04d..892389d6a 100644
+index 730007fa8b..ed105d249f 100644
 --- a/frontend/translations/tr.po
 +++ b/frontend/translations/tr.po
 @@ -90,7 +90,7 @@ msgstr "LDAP"
@@ -518,7 +518,7 @@ index b2095b04d..892389d6a 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 diff --git a/frontend/translations/zh_Hant.po b/frontend/translations/zh_Hant.po
-index d5861efe2..1200a371b 100644
+index 5fc4a41085..419c72b866 100644
 --- a/frontend/translations/zh_Hant.po
 +++ b/frontend/translations/zh_Hant.po
 @@ -84,7 +84,7 @@ msgstr "LDAP"
@@ -531,5 +531,5 @@ index d5861efe2..1200a371b 100644
  #: src/app/main/ui/auth/recovery.cljs:60
  msgid "auth.new-password"
 -- 
-2.53.0
+2.50.1
 
