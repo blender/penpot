@@ -23,6 +23,7 @@
 (def ^:icon nitrate-welcome-light (icon-xref :nitrate-welcome-light))
 
 (def ^:icon brand-openid (icon-xref :brand-openid))
+(def ^:icon brand-blender (icon-xref :brand-blender))
 (def ^:icon brand-github (icon-xref :brand-github))
 (def ^:icon brand-gitlab (icon-xref :brand-gitlab))
 (def ^:icon brand-google (icon-xref :brand-google))
