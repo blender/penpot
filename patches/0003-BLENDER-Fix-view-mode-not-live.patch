@@ -1,7 +1,7 @@
-From 09bde8e6c5d3ed5dd7b0de0c3b82a315bf95fdba Mon Sep 17 00:00:00 2001
+From cacf97f88284ec4aa1dc22048cda3ec843c745b0 Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
-Date: Wed, 4 Nov 2026 23:21:50 +0100
-Subject: [PATCH 3/3] BLENDER: Fix view mode not live
+Date: Wed, 4 Nov 2026 16:53:19 +0100
+Subject: [PATCH] BLENDER: Fix view mode not live
 
 Bug report: https://github.com/penpot/penpot/issues/12837
 
@@ -12,7 +12,7 @@ AI-assisted-by: co-pilot
  2 files changed, 83 insertions(+), 7 deletions(-)
 
 diff --git a/frontend/src/app/main/data/viewer.cljs b/frontend/src/app/main/data/viewer.cljs
-index 418a34ae87..d14aece5eb 100644
+index 683bbcf8b9..681eadd225 100644
 --- a/frontend/src/app/main/data/viewer.cljs
 +++ b/frontend/src/app/main/data/viewer.cljs
 @@ -23,11 +23,13 @@
@@ -74,8 +74,8 @@ index 418a34ae87..d14aece5eb 100644
  (defn initialize
    [{:keys [file-id share-id] :as params}]
    (dm/assert!
-@@ -79,13 +112,26 @@
-           (assoc-in [:viewer-local :share-id] share-id)))
+@@ -80,13 +113,26 @@
+           (update :comments-local dcmt/merge-persisted-filters)))
  
      ptk/WatchEvent
 -    (watch [_ state _]
@@ -108,7 +108,7 @@ index 418a34ae87..d14aece5eb 100644
      ptk/EffectEvent
      (effect [_ _ _]
        ;; Set the window name, the window name is used on inter-tab
-@@ -201,6 +247,7 @@
+@@ -202,6 +248,7 @@
                   (into {}))]
  
          (-> state
@@ -117,7 +117,7 @@ index 418a34ae87..d14aece5eb 100644
              (assoc-in [:viewer :pages] pages))))))
  
 diff --git a/frontend/test/frontend_tests/data/viewer_test.cljs b/frontend/test/frontend_tests/data/viewer_test.cljs
-index 0aea84ddba..49b8e37ec0 100644
+index 5c3b0ca128..bc1fa54ae6 100644
 --- a/frontend/test/frontend_tests/data/viewer_test.cljs
 +++ b/frontend/test/frontend_tests/data/viewer_test.cljs
 @@ -6,8 +6,10 @@
