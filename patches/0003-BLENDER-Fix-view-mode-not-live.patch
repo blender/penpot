@@ -1,4 +1,4 @@
-From 09bde8e6c5d3ed5dd7b0de0c3b82a315bf95fdba Mon Sep 17 00:00:00 2001
+From 33b3cce00e4693de9ac7598c6a6d15d9ecaf968d Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
 Date: Wed, 4 Nov 2026 23:21:50 +0100
 Subject: [PATCH 3/3] BLENDER: Fix view mode not live
