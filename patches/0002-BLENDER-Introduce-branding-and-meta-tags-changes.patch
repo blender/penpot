@@ -1,7 +1,7 @@
-From 6fa39bf24e932d1902d98eb3e8288364b2747bf9 Mon Sep 17 00:00:00 2001
+From f3003d04a57d987d1c314a21e1054efa67a82814 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Wed, 4 Nov 2026 23:09:50 +0100
-Subject: [PATCH 2/2] BLENDER: Introduce branding and meta tags changes
+Subject: [PATCH 2/3] BLENDER: Introduce branding and meta tags changes
 
 ---
  frontend/resources/images/favicon.png       | Bin 1336 -> 24328 bytes

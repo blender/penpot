@@ -1,7 +1,7 @@
-From cacf97f88284ec4aa1dc22048cda3ec843c745b0 Mon Sep 17 00:00:00 2001
+From 303ebc16d34d071aad5c41a0ed6cf125d096b2a7 Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
 Date: Wed, 4 Nov 2026 16:53:19 +0100
-Subject: [PATCH] BLENDER: Fix view mode not live
+Subject: [PATCH 3/3] BLENDER: Fix view mode not live
 
 Bug report: https://github.com/penpot/penpot/issues/12837
 
