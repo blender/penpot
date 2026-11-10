@@ -1,21 +1,31 @@
-From 303ebc16d34d071aad5c41a0ed6cf125d096b2a7 Mon Sep 17 00:00:00 2001
+From 668710ea49cd48ed516f4e5d98ac54b8b98331d8 Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
-Date: Wed, 4 Nov 2026 16:53:19 +0100
+Date: Wed, 11 Nov 2026 00:38:42 +0100
 Subject: [PATCH 3/3] BLENDER: Fix view mode not live
 
 Bug report: https://github.com/penpot/penpot/issues/12837
 
-AI-assisted-by: co-pilot
+AI-assisted-by: Co-pilot + Claude (Sonnet 5.5)
 ---
- frontend/src/app/main/data/viewer.cljs        | 61 ++++++++++++++++---
- .../test/frontend_tests/data/viewer_test.cljs | 29 +++++++++
- 2 files changed, 83 insertions(+), 7 deletions(-)
+ frontend/src/app/main/data/viewer.cljs        | 401 +++++++++++++++---
+ frontend/src/app/main/render_viewer_wasm.cljs |  31 +-
+ .../src/app/main/ui/viewer/viewport_wasm.cljs |   5 +-
+ .../test/frontend_tests/data/viewer_test.cljs | 171 ++++++++
+ 4 files changed, 531 insertions(+), 77 deletions(-)
 
 diff --git a/frontend/src/app/main/data/viewer.cljs b/frontend/src/app/main/data/viewer.cljs
-index 683bbcf8b9..681eadd225 100644
+index 683bbcf8b9..a6cce115ad 100644
 --- a/frontend/src/app/main/data/viewer.cljs
 +++ b/frontend/src/app/main/data/viewer.cljs
-@@ -23,11 +23,13 @@
+@@ -12,6 +12,7 @@
+    [app.common.files.changes :as cpc]
+    [app.common.files.helpers :as cfh]
+    [app.common.geom.point :as gpt]
++   [app.common.logging :as l]
+    [app.common.schema :as sm]
+    [app.common.transit :as t]
+    [app.common.types.shape-tree :as ctt]
+@@ -23,6 +24,7 @@
     [app.main.data.event :as ev]
     [app.main.data.fonts :as df]
     [app.main.data.helpers :as dsh]
@@ -23,148 +33,785 @@ index 683bbcf8b9..681eadd225 100644
     [app.main.features :as features]
     [app.main.repo :as rp]
     [app.main.router :as rt]
-    [app.render-wasm.api :as wasm.api]
-    [app.util.globals :as ug]
-+   [app.util.object :as obj]
-    [beicon.v2.core :as rx]
-    [potok.v2.core :as ptk]))
- 
-@@ -49,6 +51,7 @@
- (declare fetch-comment-threads)
- (declare fetch-bundle)
+@@ -51,6 +53,7 @@
  (declare bundle-fetched)
-+(declare apply-changes-viewer)
  (declare zoom-to-fill)
  (declare zoom-to-fit)
++(declare watch-file-changes)
  
-@@ -59,6 +62,36 @@
-    [:share-id {:optional true} [:maybe ::sm/uuid]]
-    [:page-id {:optional true} ::sm/uuid]])
- 
-+(defn- file-change-events
-+  [file-id stream]
-+  (->> stream
-+       (rx/filter (ptk/type? ::dws/message))
-+       (rx/map deref)
-+       (rx/filter (fn [{:keys [type topic] :as message}]
-+                    (and (= :file-change type)
-+                         (= file-id topic)
-+                         (= file-id (:file-id message)))))
-+       (rx/map (fn [{:keys [changes]}]
-+                 (apply-changes-viewer changes)))))
-+
-+(defn- subscribe-to-file
-+  [file-id stream]
-+  (let [stopper (rx/filter (ptk/type? ::finalize) stream)
-+        subscribe-msg {:type :subscribe-file
-+                       :file-id file-id
-+                       :version (obj/get ug/global "penpotVersion")}
-+        unsubscribe-msg {:type :unsubscribe-file
-+                         :file-id file-id}]
-+    (rx/concat
-+     (->> (rx/merge
-+           (rx/of (dws/send subscribe-msg))
-+           (->> stream
-+                (rx/filter (ptk/type? ::dws/opened))
-+                (rx/map (constantly (dws/send subscribe-msg))))
-+           (file-change-events file-id stream))
-+          (rx/take-until stopper))
-+     (rx/of (dws/send unsubscribe-msg)))))
-+
- (defn initialize
-   [{:keys [file-id share-id] :as params}]
-   (dm/assert!
-@@ -80,13 +113,26 @@
-           (update :comments-local dcmt/merge-persisted-filters)))
- 
-     ptk/WatchEvent
--    (watch [_ state _]
--      (rx/of (fetch-bundle (d/without-nils params))
--             ;; Only fetch threads for logged-in users
--             (when (some? (:profile state))
--               (fetch-comment-threads params))
--             (when (:share-id params)
--               (rx/of (ev/event {::ev/name "shared-prototipe-visited"})))))
-+    (watch [_ state stream]
-+      (let [fetch-events (rx/of (fetch-bundle (d/without-nils params))
-+                                ;; Only fetch threads for logged-in users
-+                                (when (some? (:profile state))
-+                                  (fetch-comment-threads params))
-+                                (when (:share-id params)
-+                                  (rx/of (ev/event {::ev/name "shared-prototipe-visited"}))))
-+            file-id (:file-id params)
-+            subscribed? (and (some? (:profile-id state))
-+                             (nil? (:share-id params)))]
-+
-+        (if-not subscribed?
-+          fetch-events
-+          (rx/merge
-+           fetch-events
-+           (->> stream
-+                (rx/filter (ptk/type? ::bundle-fetched))
-+                (rx/take 1)
-+                (rx/mapcat (fn [_]
-+                             (subscribe-to-file file-id stream))))))))
+ (def ^:private
+   schema:initialize
+@@ -85,6 +88,10 @@
+              ;; Only fetch threads for logged-in users
+              (when (some? (:profile state))
+                (fetch-comment-threads params))
++             ;; Keep the viewer in sync with the edits done on the file
++             ;; (only for logged-in users, the websocket requires it).
++             (when (some? (:profile state))
++               (watch-file-changes params))
+              (when (:share-id params)
+                (rx/of (ev/event {::ev/name "shared-prototipe-visited"})))))
+     ptk/EffectEvent
+@@ -106,7 +113,7 @@
+   (ptk/reify ::finalize
+     ptk/UpdateEvent
+     (update [_ state]
+-      (dissoc state :viewer))
++      (dissoc state :viewer :viewer-sync-frame-id))
      ptk/EffectEvent
      (effect [_ _ _]
-       ;; Set the window name, the window name is used on inter-tab
-@@ -202,6 +248,7 @@
-                  (into {}))]
+       (cf/set-current-share-id! nil))))
+@@ -120,8 +127,55 @@
+    [:file-id ::sm/uuid]
+    [:share-id {:optional true} ::sm/uuid]])
  
++(defn- fetch-bundle-data
++  "Fetch the view-only bundle of the file and resolve all the lazy
++  pointers. Returns an observable that emits the complete bundle."
++  [{:keys [file-id share-id]}]
++  (let [;; NOTE: in viewer we don't have access to the team when
++        ;; user is not logged-in, so we can't know which features
++        ;; are active from team, so in this case it is necesary
++        ;; report the whole set of supported features instead of
++        ;; the enabled ones.
++        features cfeat/supported-features
++        params'  (cond-> {:file-id file-id :features features}
++                   (uuid? share-id)
++                   (assoc :share-id share-id))
++
++        resolve  (fn [[key pointer]]
++                   (let [params {:file-id file-id :fragment-id @pointer}
++                         params (cond-> params
++                                  (uuid? share-id)
++                                  (assoc :share-id share-id))]
++                     (->> (rp/cmd! :get-file-fragment params)
++                          (rx/map :data)
++                          (rx/map #(vector key %)))))]
++
++    (->> (rp/cmd! :get-view-only-bundle params')
++         (rx/mapcat
++          (fn [bundle]
++            (->> (rx/from (-> bundle :file :data :pages-index seq))
++                 (rx/merge-map
++                  (fn [[_ page :as kp]]
++                    (if (t/pointer? page)
++                      (resolve kp)
++                      (rx/of kp))))
++                 (rx/reduce conj {})
++                 (rx/map (fn [pages-index]
++                           (update-in bundle [:file :data] assoc :pages-index pages-index))))))
++         (rx/mapcat
++          (fn [bundle]
++            (->> (rx/from (-> bundle :file :data seq))
++                 (rx/merge-map
++                  (fn [[_ object :as kp]]
++                    (if (t/pointer? object)
++                      (resolve kp)
++                      (rx/of kp))))
++                 (rx/reduce conj {})
++                 (rx/map (fn [data]
++                           (update bundle :file assoc :data data)))))))))
++
+ (defn- fetch-bundle
+-  [{:keys [file-id share-id] :as params}]
++  [params]
+ 
+   (dm/assert!
+    "expected valid params"
+@@ -130,58 +184,44 @@
+   (ptk/reify ::fetch-bundle
+     ptk/WatchEvent
+     (watch [_ _ _]
+-      (let [;; NOTE: in viewer we don't have access to the team when
+-            ;; user is not logged-in, so we can't know which features
+-            ;; are active from team, so in this case it is necesary
+-            ;; report the whole set of supported features instead of
+-            ;; the enabled ones.
+-            features cfeat/supported-features
+-            params'  (cond-> {:file-id file-id :features features}
+-                       (uuid? share-id)
+-                       (assoc :share-id share-id))
+-
+-            resolve  (fn [[key pointer]]
+-                       (let [params {:file-id file-id :fragment-id @pointer}
+-                             params (cond-> params
+-                                      (uuid? share-id)
+-                                      (assoc :share-id share-id))]
+-                         (->> (rp/cmd! :get-file-fragment params)
+-                              (rx/map :data)
+-                              (rx/map #(vector key %)))))]
+-
+-        (->> (rp/cmd! :get-view-only-bundle params')
+-             (rx/mapcat
+-              (fn [bundle]
+-                (->> (rx/from (-> bundle :file :data :pages-index seq))
+-                     (rx/merge-map
+-                      (fn [[_ page :as kp]]
+-                        (if (t/pointer? page)
+-                          (resolve kp)
+-                          (rx/of kp))))
+-                     (rx/reduce conj {})
+-                     (rx/map (fn [pages-index]
+-                               (update-in bundle [:file :data] assoc :pages-index pages-index))))))
+-             (rx/mapcat
+-              (fn [bundle]
+-                (->> (rx/from (-> bundle :file :data seq))
+-                     (rx/merge-map
+-                      (fn [[_ object :as kp]]
+-                        (if (t/pointer? object)
+-                          (resolve kp)
+-                          (rx/of kp))))
+-                     (rx/reduce conj {})
+-                     (rx/map (fn [data]
+-                               (update bundle :file assoc :data data))))))
+-             (rx/mapcat
+-              (fn [{:keys [fonts team] :as bundle}]
+-                (rx/of (df/fonts-fetched fonts)
+-                       (features/initialize (:features team))
+-                       (bundle-fetched (merge bundle params))))))))))
++      (->> (fetch-bundle-data params)
++           (rx/mapcat
++            (fn [{:keys [fonts team] :as bundle}]
++              (rx/of (df/fonts-fetched fonts)
++                     (features/initialize (:features team))
++                     (bundle-fetched (merge bundle params)))))))))
+ 
+ (declare go-to-frame)
+ (declare go-to-frame-by-index)
+ (declare go-to-frame-auto)
+ 
++;; --- Viewer pages
++
++(defn- build-viewer-page
++  [data]
++  (assoc data
++         :frames (ctt/get-viewer-frames (:objects data))
++         :all-frames (ctt/get-viewer-frames (:objects data) {:all-frames? true})))
++
++(defn- build-viewer-pages
++  "Build the viewer pages index (page data plus the precalculated
++  frames). When `prev-file` and `prev-pages` are provided, the pages
++  that did not change between both file versions are reused instead of
++  being calculated again."
++  ([file]
++   (build-viewer-pages file nil nil))
++  ([file prev-file prev-pages]
++   (let [index      (dm/get-in file [:data :pages-index])
++         prev-index (dm/get-in prev-file [:data :pages-index])]
++     (->> (dm/get-in file [:data :pages])
++          (map (fn [page-id]
++                 (let [data (get index page-id)]
++                   [page-id (if (and (contains? prev-pages page-id)
++                                     (identical? data (get prev-index page-id)))
++                              (get prev-pages page-id)
++                              (build-viewer-page data))])))
++          (into {})))))
++
+ ;; Applies to the viewer the changes passed as parameters
+ ;; will not save the data but just modify the data localy
+ (defn- apply-changes-viewer
+@@ -189,21 +229,12 @@
+   (ptk/reify ::apply-changes-viewer
+     ptk/UpdateEvent
+     (update [_ state]
+-      (let [file (-> (dm/get-in state [:viewer :file])
+-                     (update :data cpc/process-changes changes false))
+-
+-            pages
+-            (->> (dm/get-in file [:data :pages])
+-                 (map (fn [page-id]
+-                        (let [data (get-in file [:data :pages-index page-id])]
+-                          [page-id (assoc data
+-                                          :frames (ctt/get-viewer-frames (:objects data))
+-                                          :all-frames (ctt/get-viewer-frames (:objects data) {:all-frames? true}))])))
+-                 (into {}))]
+-
++      (let [prev-file  (dm/get-in state [:viewer :file])
++            prev-pages (dm/get-in state [:viewer :pages])
++            file       (update prev-file :data cpc/process-changes changes false)]
          (-> state
-+            (assoc-in [:files (:id file)] file)
              (assoc-in [:viewer :file] file)
-             (assoc-in [:viewer :pages] pages))))))
+-            (assoc-in [:viewer :pages] pages))))))
++            (assoc-in [:viewer :pages] (build-viewer-pages file prev-file prev-pages)))))))
  
+ (defn- generate-update-position-data-changes
+   [shapes page-id]
+@@ -271,13 +302,7 @@
+ 
+ (defn bundle-fetched
+   [{:keys [project file team share-links libraries users permissions thumbnails] :as bundle}]
+-  (let [pages (->> (dm/get-in file [:data :pages])
+-                   (map (fn [page-id]
+-                          (let [data (get-in file [:data :pages-index page-id])]
+-                            [page-id (assoc data
+-                                            :frames (ctt/get-viewer-frames (:objects data))
+-                                            :all-frames (ctt/get-viewer-frames (:objects data) {:all-frames? true}))])))
+-                   (into {}))]
++  (let [pages (build-viewer-pages file)]
+ 
+     (ptk/reify ::bundle-fetched
+       ptk/UpdateEvent
+@@ -319,6 +344,244 @@
+               (some? index) (go-to-frame-by-index index)
+               :else (go-to-frame-auto)))))))))
+ 
++;; --- Live updates
++;;
++;; While the viewer is open, the file is kept in sync with the edits done
++;; in the workspace. The viewer subscribes to the file websocket topic and
++;; applies the `file-change` messages locally. The `revn` of the viewer
++;; file is tracked: if a message is missed (a gap in the revisions, the
++;; socket reconnected, the file was restored...) the bundle is fetched
++;; again silently, without altering the navigation state (current board,
++;; zoom, fullscreen...).
++;;
++;; NOTE: the websocket only lets subscribe to files the user can read as
++;; a team member, so this does not apply to anonymous share-links.
++
++(def ^:private refresh-requested
++  (ptk/reify ::refresh-requested))
++
++(defn- current-page-id
++  [state]
++  (let [params (rt/get-params state)]
++    (or (some-> (:page-id params) uuid/parse)
++        (-> (dm/get-in state [:viewer :file :data :pages]) first))))
++
++(defn- current-frame-id
++  [state]
++  (let [params  (rt/get-params state)
++        index   (or (some-> (rt/get-query-param params :index) parse-long) 0)
++        frames  (dm/get-in state [:viewer :pages (current-page-id state) :frames])]
++    (:id (get frames index))))
++
++(defn- newer-file?
++  "Check if `file` is a newer version of the file loaded in the viewer."
++  [state file]
++  (let [prev (dm/get-in state [:viewer :file])]
++    (and (some? prev)
++         (= (:id file) (:id prev))
++         (or (not= (:vern file) (:vern prev))
++             (> (:revn file 0) (:revn prev 0))))))
++
++(defn- assoc-viewer-file
++  [state file]
++  (let [prev-file  (dm/get-in state [:viewer :file])
++        prev-pages (dm/get-in state [:viewer :pages])]
++    (-> state
++        ;; Remember the board we are looking at, to keep showing it even
++        ;; if its position changes. Keep the oldest one if several updates
++        ;; arrive before `after-file-updated` is processed.
++        (update :viewer-sync-frame-id #(or % (current-frame-id state)))
++        (assoc-in [:viewer :file] file)
++        (assoc-in [:viewer :pages] (build-viewer-pages file prev-file prev-pages))
++        (assoc-in [:files (:id file)] file))))
++
++(def ^:private after-file-updated
++  (ptk/reify ::after-file-updated
++    ptk/WatchEvent
++    (watch [_ state _]
++      (let [params    (rt/get-params state)
++            file-id   (dm/get-in state [:viewer :file :id])
++            page-id   (current-page-id state)
++            frames    (dm/get-in state [:viewer :pages page-id :frames])
++            index     (or (some-> (rt/get-query-param params :index) parse-long) 0)
++            frame-id  (:viewer-sync-frame-id state)
++            zoom-type (dm/get-in state [:viewer-local :zoom-type])
++
++            ;; The current board is tracked by id: when boards are added
++            ;; or removed before it, keep showing the same one. If it was
++            ;; removed, stay as close as possible to the previous position.
++            new-index (when (seq frames)
++                        (or (when (some? frame-id)
++                              (d/index-of-pred frames #(= (:id %) frame-id)))
++                            (min index (dec (count frames)))))
++            moved?    (and (some? new-index) (not= new-index index))]
++
++        (rx/concat
++         (rx/of #(dissoc % :viewer-sync-frame-id))
++
++         (cond
++           ;; The zoom is recalculated when the index changes
++           moved?
++           (rx/of (rt/nav :viewer (assoc params :index new-index) {::rt/replace true}))
++
++           ;; The board size may have changed
++           (and (seq frames) (= :fit zoom-type))
++           (rx/of zoom-to-fit)
++
++           (and (seq frames) (= :fill zoom-type))
++           (rx/of zoom-to-fill)
++
++           :else
++           (rx/empty))
++
++         (rx/of (update-page-position-data file-id (some-> (:page-id params) uuid/parse))))))))
++
++(defn- file-updated
++  [file]
++  (ptk/reify ::file-updated
++    ptk/UpdateEvent
++    (update [_ state]
++      (if (newer-file? state file)
++        (assoc-viewer-file state file)
++        state))
++
++    ptk/WatchEvent
++    (watch [_ _ _]
++      (rx/of after-file-updated))))
++
++(defn- bundle-refreshed
++  [{:keys [file libraries thumbnails]}]
++  (ptk/reify ::bundle-refreshed
++    ptk/UpdateEvent
++    (update [_ state]
++      (if (newer-file? state file)
++        (let [libraries (d/index-by :id libraries)]
++          (-> state
++              (assoc-viewer-file file)
++              (assoc-in [:viewer :libraries] libraries)
++              (assoc-in [:viewer :thumbnails] thumbnails)
++              (update :files merge libraries)))
++        state))
++
++    ptk/WatchEvent
++    (watch [_ _ _]
++      (rx/of after-file-updated))))
++
++(defn- filter-page-changes
++  "Remove the changes related to pages the viewer does not have (the
++  viewer bundle may not contain all the pages of the file)."
++  [file changes]
++  (let [known (volatile! (into #{} (keys (dm/get-in file [:data :pages-index]))))]
++    (filterv (fn [{:keys [type id page page-id]}]
++               (when (= type :add-page)
++                 (vswap! known conj (or id (:id page))))
++               (or (nil? page-id) (contains? @known page-id)))
++             changes)))
++
++(defn- handle-file-change
++  [{:keys [file-id revn vern changes]}]
++  (ptk/reify ::handle-file-change
++    ptk/WatchEvent
++    (watch [_ state _]
++      (let [file (dm/get-in state [:viewer :file])]
++        (when (and (= file-id (:id file))
++                   (int? revn))
++          (let [file-revn (:revn file)]
++            (cond
++              ;; Already applied (or older than the loaded bundle)
++              (and (int? file-revn) (<= revn file-revn))
++              (rx/empty)
++
++              ;; We missed something: other version of the file or a gap
++              ;; in the revisions, fetch the file again.
++              (or (not (int? file-revn))
++                  (not= vern (:vern file))
++                  (> revn (inc file-revn)))
++              (rx/of refresh-requested)
++
++              :else
++              (let [file' (try
++                            (-> file
++                                (update :data cpc/process-changes
++                                        (filter-page-changes file changes) false)
++                                (assoc :revn revn))
++                            (catch :default cause
++                              (l/warn :hint "unable to apply file changes on viewer"
++                                      :cause cause)
++                              nil))]
++                (if (some? file')
++                  (rx/of (file-updated file'))
++                  (rx/of refresh-requested))))))))))
++
++(defn- handle-file-restored
++  [{:keys [file-id vern]}]
++  (ptk/reify ::handle-file-restored
++    ptk/WatchEvent
++    (watch [_ state _]
++      (let [file (dm/get-in state [:viewer :file])]
++        (when (and (= file-id (:id file))
++                   (not= vern (:vern file)))
++          (rx/of refresh-requested))))))
++
++(def ^:private socket-reopened
++  ;; The messages sent while the socket was closed are lost.
++  (ptk/reify ::socket-reopened
++    ptk/WatchEvent
++    (watch [_ state _]
++      (when (some? (dm/get-in state [:viewer :file]))
++        (rx/of refresh-requested)))))
++
++(defn- process-message
++  [{:keys [type] :as message}]
++  (case type
++    :file-change   (handle-file-change message)
++    :file-restored (handle-file-restored message)
++    nil))
++
++(defn- watch-file-changes
++  [{:keys [file-id share-id]}]
++  (ptk/reify ::watch-file-changes
++    ptk/WatchEvent
++    (watch [_ _ stream]
++      (let [stopper   (rx/filter (ptk/type? ::finalize) stream)
++            subscribe {:type :subscribe-file :file-id file-id}
++            unsubscribe {:type :unsubscribe-file :file-id file-id}
++
++            refetch
++            (fn [_]
++              (->> (fetch-bundle-data {:file-id file-id :share-id share-id})
++                   (rx/map bundle-refreshed)
++                   (rx/catch (fn [cause]
++                               (l/warn :hint "unable to refresh viewer bundle"
++                                       :cause cause)
++                               (rx/empty)))))]
++
++        (rx/concat
++         (->> (rx/merge
++               (rx/of (dws/send subscribe))
++
++               ;; On reconnect, subscribe again and resync
++               (->> stream
++                    (rx/filter (ptk/type? ::dws/opened))
++                    (rx/mapcat (fn [_]
++                                 (rx/of (dws/send subscribe)
++                                        socket-reopened))))
++
++               (->> stream
++                    (rx/filter (ptk/type? ::dws/message))
++                    (rx/map deref)
++                    (rx/filter #(= file-id (:topic %)))
++                    (rx/map process-message)
++                    (rx/filter some?))
++
++               ;; Coalesce bursts and drop obsolete in-flight requests
++               (->> stream
++                    (rx/filter (ptk/type? ::refresh-requested))
++                    (rx/debounce 300)
++                    (rx/switch-map refetch)))
++              (rx/take-until stopper))
++         (rx/of (dws/send unsubscribe)))))))
++
+ (defn fetch-comment-threads
+   [{:keys [file-id page-id share-id] :as params}]
+   (letfn [(fetched [data state]
+diff --git a/frontend/src/app/main/render_viewer_wasm.cljs b/frontend/src/app/main/render_viewer_wasm.cljs
+index 9a6bca0d99..db388410b3 100644
+--- a/frontend/src/app/main/render_viewer_wasm.cljs
++++ b/frontend/src/app/main/render_viewer_wasm.cljs
+@@ -31,6 +31,7 @@
+ (defonce ^:private viewer-snapshot
+   (atom {:os-canvas nil
+          :page-key  nil
++         :objects-key nil
+          :canvas-w  0
+          :canvas-h  0
+          :dpr       1}))
+@@ -39,6 +40,7 @@
+   (reset! viewer-snapshot
+           {:os-canvas nil
+            :page-key nil
++           :objects-key nil
+            :canvas-w 0
+            :canvas-h 0
+            :dpr 1}))
+@@ -145,7 +147,12 @@
+ 
+ (defn- render-viewer-frame*
+   [page-key page-objects canvas size scale object-id on-render
+-   {:keys [include-ids clear-fills-ids] :or {clear-fills-ids #{}}}]
++   {:keys [include-ids clear-fills-ids objects-key] :or {clear-fills-ids #{}}}]
++  ;; `page-key` identifies the page whose canvas context we keep alive and
++  ;; `objects-key` is the (unmodified) objects map of that page. The shapes
++  ;; loaded into the renderer are only valid for the objects they were loaded
++  ;; from, so when the objects change (e.g. a live update coming from the
++  ;; workspace) the shapes are loaded again into the existing context.
+   (p/create
+    (fn [resolve _reject]
+      (let [prev-disable @wasm/disable-request-render?
+@@ -158,6 +165,7 @@
+            dpr          (wasm.api/get-dpr)
+            snap         @viewer-snapshot
+            same-page?   (and (some? page-key) (identical? page-key (:page-key snap)))
++           same-objects? (identical? objects-key (:objects-key snap))
+            same-size?   (and (= vis-w (:canvas-w snap))
+                              (= vis-h (:canvas-h snap))
+                              (= dpr (:dpr snap)))
+@@ -175,7 +183,15 @@
+              (when-not same-size?
+                (wasm.api/resize-offscreen-canvas! os vis-w vis-h)
+                (swap! viewer-snapshot assoc :canvas-w vis-w :canvas-h vis-h :dpr dpr))
+-             (do-render! os))
++             (if same-objects?
++               (do-render! os)
++               (do
++                 (swap! viewer-snapshot assoc :objects-key objects-key)
++                 (wasm.api/initialize-viewport
++                  page-objects scale size
++                  :background-opacity 0
++                  :force-sync true
++                  :on-render #(do-render! os)))))
+            (let [os-canvas (js/OffscreenCanvas. vis-w vis-h)]
+              (when (wasm.api/initialized?)
+                (wasm.api/clear-canvas {:lose-browser-context? false}))
+@@ -184,6 +200,7 @@
+                  (reset! viewer-snapshot
+                          {:os-canvas os-canvas
+                           :page-key  page-key
++                          :objects-key objects-key
+                           :canvas-w  vis-w
+                           :canvas-h  vis-h
+                           :dpr       dpr})
+@@ -228,7 +245,7 @@
+     @dpr-key))
+ 
+ (defn- use-viewer-wasm-layers!
+-  [page-id page-objects size scale frame-id not-fixed-ref fixed-ref
++  [page-id page-objects objects-key size scale frame-id not-fixed-ref fixed-ref
+    not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids delta dpr-key]
+   ;; The hot-areas SVG shifts every object by `-(size + delta)` so the frame
+   ;; `selrect` lands flush against the overlay snap side, ignoring the extra
+@@ -239,7 +256,7 @@
+                         (update :x + (:x delta 0))
+                         (update :y + (:y delta 0)))]
+     (mf/use-layout-effect
+-     (mf/deps page-id page-objects render-size scale frame-id dpr-key
++     (mf/deps page-id page-objects objects-key render-size scale frame-id dpr-key
+               not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids)
+      (fn []
+        (when (get page-objects frame-id)
+@@ -269,18 +286,18 @@
+                                     (p/then chain
+                                             #(render-viewer-frame* page-id page-objects
+                                                                    canvas render-size scale frame-id
+-                                                                   nil opts)))
++                                                                   nil (assoc opts :objects-key objects-key))))
+                                   (p/resolved nil)
+                                   passes))))))))))))))
+ 
+ (defn use-viewer-wasm-viewport!
+   "WASM render passes and fixed-scroll DOM sync for the viewer viewport."
+-  [page-id page-objects size scale frame-id
++  [page-id page-objects objects-key size scale frame-id
+    not-fixed-ref fixed-ref fixed-scroll-layer-ref
+    not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids delta]
+   (use-fixed-scroll-sync! (some? fixed-scroll-layer-ref) fixed-scroll-layer-ref)
+   (let [dpr-key (use-viewer-dpr-key)]
+-    (use-viewer-wasm-layers! page-id page-objects size scale frame-id
++    (use-viewer-wasm-layers! page-id page-objects objects-key size scale frame-id
+                              not-fixed-ref fixed-ref
+                              not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids
+                              delta dpr-key)))
+diff --git a/frontend/src/app/main/ui/viewer/viewport_wasm.cljs b/frontend/src/app/main/ui/viewer/viewport_wasm.cljs
+index e64a4d5f8f..1506ec3b05 100644
+--- a/frontend/src/app/main/ui/viewer/viewport_wasm.cljs
++++ b/frontend/src/app/main/ui/viewer/viewport_wasm.cljs
+@@ -97,6 +97,9 @@
+         fixed-wasm-ref       (mf/use-ref nil)
+ 
+         objects  (:objects page)
++        ;; Identity of the page objects as they come from the file data, used
++        ;; by the renderer to know when the loaded shapes are outdated.
++        objects-key objects
+         frame-id (:id frame)
+         scale    (vpc/viewer-scale size)
+         page-id  (:id page)
+@@ -149,7 +152,7 @@
+                    :shape-filter #(contains? fixed-mask-set %)})]
+ 
+     (rwv/use-viewer-wasm-viewport!
+-     page-id objects size scale frame-id
++     page-id objects objects-key size scale frame-id
+      not-fixed-wasm-ref fixed-wasm-ref
+      (when has-fixed? fixed-layer-ref)
+      not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids
 diff --git a/frontend/test/frontend_tests/data/viewer_test.cljs b/frontend/test/frontend_tests/data/viewer_test.cljs
-index 5c3b0ca128..bc1fa54ae6 100644
+index 5c3b0ca128..333adc532f 100644
 --- a/frontend/test/frontend_tests/data/viewer_test.cljs
 +++ b/frontend/test/frontend_tests/data/viewer_test.cljs
-@@ -6,8 +6,10 @@
+@@ -6,6 +6,7 @@
  
  (ns frontend-tests.data.viewer-test
    (:require
 +   [app.common.types.shape :as cts]
     [app.common.uuid :as uuid]
     [app.main.data.viewer :as dv]
-+   [app.main.data.websocket :as dws]
     [app.main.router :as rt]
-    [beicon.v2.core :as rx]
-    [cljs.test :as t]
-@@ -88,6 +90,33 @@
-                    (some? zoom-type)
-                    (assoc :zoom-type zoom-type))})
- 
-+(t/deftest applying-file-changes-updates-viewer-file-and-frames
-+  (let [file-id  (uuid/custom 1 2)
-+        frame-id (uuid/custom 1 3)
-+        frame    (cts/setup-shape {:id frame-id :type :frame :name "Board"})
-+        file     {:id file-id
-+                  :data {:pages [page-id]
-+                         :pages-index {page-id {:id page-id
-+                                                :objects {frame-id frame}}}}}
-+        state    {:files {file-id file}
-+                  :viewer {:file file}}
-+        changes  [{:type :mod-obj
-+                   :id frame-id
-+                   :page-id page-id
-+                   :operations [{:type :set :attr :hide-in-viewer :val true}]}]
-+        message  (ptk/data-event ::dws/message
-+                                 {:type :file-change
-+                                  :file-id file-id
-+                                  :topic file-id
-+                                  :changes changes})
-+        events   (let [events (atom [])]
-+                   (rx/subscribe (#'dv/file-change-events file-id (rx/of message))
-+                                 #(swap! events conj %))
-+                   @events)
-+        updated  (ptk/update (first events) state)]
-+    (t/is (true? (get-in updated [:files file-id :data :pages-index page-id :objects frame-id :hide-in-viewer])))
-+    (t/is (empty? (get-in updated [:viewer :pages page-id :frames])))))
+@@ -151,3 +152,173 @@
+           ;; ones that can restart the zoom cycle.
+           navigations (filter #(= :app.main.router/navigate (ptk/type %)) events)]
+       (t/is (empty? navigations)))))
 +
- (t/deftest update-zoom-querystring-does-not-navigate-when-url-already-matches
-   (t/testing "zoom type already described by the query string"
-     (t/is (empty? (watch-events dv/update-zoom-querystring
++;; --- Live updates
++
++(def ^:private file-id
++  (uuid/custom 1 2))
++
++(def ^:private page-id-2
++  (uuid/custom 1 4))
++
++(defn- make-page
++  [pid frame-ids]
++  (let [root   (cts/setup-shape {:id uuid/zero
++                                 :type :frame
++                                 :name "Root"
++                                 :shapes (vec frame-ids)})
++        frames (map #(cts/setup-shape {:id %
++                                       :type :frame
++                                       :name "Board"
++                                       :parent-id uuid/zero
++                                       :frame-id uuid/zero})
++                    frame-ids)]
++    {:id pid
++     :objects (into {uuid/zero root}
++                    (map (juxt :id identity))
++                    frames)}))
++
++(defn- make-file
++  [{:keys [revn vern frames-1 frames-2] :or {revn 5 vern 0}}]
++  {:id file-id
++   :revn revn
++   :vern vern
++   :data {:pages [page-id page-id-2]
++          :pages-index {page-id   (make-page page-id frames-1)
++                        page-id-2 (make-page page-id-2 frames-2)}}})
++
++(defn- live-state
++  [file index]
++  {:route {:params {:query {:page-id (str page-id) :index (str index)}}}
++   :files {file-id file}
++   :viewer {:file file
++            :pages (#'dv/build-viewer-pages file)}})
++
++(defn- hide-board-change
++  [frame-id]
++  {:type :mod-obj
++   :id frame-id
++   :page-id page-id
++   :operations [{:type :set :attr :hide-in-viewer :val true}]})
++
++(defn- refresh-requested?
++  [event]
++  (= ::dv/refresh-requested (ptk/type event)))
++
++(t/deftest file-change-is-applied-to-the-viewer
++  (let [f1      (uuid/custom 1 3)
++        f2      (uuid/custom 1 5)
++        g1      (uuid/custom 1 6)
++        file    (make-file {:frames-1 [f1 f2] :frames-2 [g1]})
++        state   (live-state file 0)
++        message {:file-id file-id
++                 :revn 6
++                 :vern 0
++                 :changes [(hide-board-change f1)]}
++        events  (watch-events (#'dv/handle-file-change message) state)
++        updated (ptk/update (first events) state)]
++
++    (t/is (= 1 (count events)))
++    (t/is (not (refresh-requested? (first events))))
++    (t/is (= 6 (get-in updated [:viewer :file :revn])))
++    (t/is (= 6 (get-in updated [:files file-id :revn])))
++    (t/is (= [f2] (mapv :id (get-in updated [:viewer :pages page-id :frames]))))
++
++    (t/testing "the board being viewed is remembered"
++      (t/is (= f1 (:viewer-sync-frame-id updated))))
++
++    (t/testing "pages not touched by the changes are not calculated again"
++      (t/is (identical? (get-in state [:viewer :pages page-id-2])
++                        (get-in updated [:viewer :pages page-id-2]))))))
++
++(t/deftest file-change-detects-out-of-sync
++  (let [f1    (uuid/custom 1 3)
++        file  (make-file {:frames-1 [f1] :frames-2 []})
++        state (live-state file 0)
++        run   (fn [message]
++                (watch-events (#'dv/handle-file-change
++                               (merge {:file-id file-id :vern 0 :changes []} message))
++                              state))]
++
++    (t/testing "a gap in the revisions refreshes the file"
++      (let [events (run {:revn 8})]
++        (t/is (= 1 (count events)))
++        (t/is (refresh-requested? (first events)))))
++
++    (t/testing "other version of the file refreshes the file"
++      (let [events (run {:revn 6 :vern 1})]
++        (t/is (= 1 (count events)))
++        (t/is (refresh-requested? (first events)))))
++
++    (t/testing "changes already included in the viewer file are ignored"
++      (t/is (empty? (run {:revn 5})))
++      (t/is (empty? (run {:revn 4}))))
++
++    (t/testing "changes of other files are ignored"
++      (t/is (empty? (run {:file-id (uuid/custom 9 9) :revn 6}))))))
++
++(t/deftest file-change-that-cannot-be-applied-refreshes-the-file
++  (let [f1      (uuid/custom 1 3)
++        file    (make-file {:frames-1 [f1] :frames-2 []})
++        state   (live-state file 0)
++        message {:file-id file-id
++                 :revn 6
++                 :vern 0
++                 ;; invalid change: unknown type
++                 :changes [{:type :this-is-not-a-change :page-id page-id}]}
++        events  (watch-events (#'dv/handle-file-change message) state)]
++    (t/is (= 1 (count events)))
++    (t/is (refresh-requested? (first events)))))
++
++(t/deftest changes-of-unknown-pages-are-not-applied
++  (let [f1       (uuid/custom 1 3)
++        file     (make-file {:frames-1 [f1] :frames-2 []})
++        unknown  (uuid/custom 7 7)
++        changes  [(hide-board-change f1)
++                  (assoc (hide-board-change f1) :page-id unknown)]]
++    (t/is (= [(hide-board-change f1)]
++             (#'dv/filter-page-changes file changes)))))
++
++(defn- navigations
++  [events]
++  (into []
++        (comp (filter #(= ::rt/navigate (ptk/type %)))
++              (map deref))
++        events))
++
++(t/deftest current-board-is-tracked-by-id
++  (let [f0 (uuid/custom 1 7)
++        f1 (uuid/custom 1 3)
++        f2 (uuid/custom 1 5)]
++
++    (t/testing "a board added before the current one does not change the board shown"
++      (let [file   (make-file {:frames-1 [f0 f1 f2] :frames-2 []})
++            state  (-> (live-state file 0)
++                       (assoc :viewer-sync-frame-id f1))
++            [nav :as navs] (navigations (watch-events @#'dv/after-file-updated state))]
++        (t/is (= 1 (count navs)))
++        (t/is (= 1 (get-in nav [:params :index])))
++        (t/is (true? (::rt/replace (:options nav))))))
++
++    (t/testing "the board is still in the same position"
++      (let [file  (make-file {:frames-1 [f1 f2] :frames-2 []})
++            state (-> (live-state file 0)
++                      (assoc :viewer-sync-frame-id f1))]
++        (t/is (empty? (navigations (watch-events @#'dv/after-file-updated state))))))
++
++    (t/testing "the current board was removed: stay in range"
++      (let [file  (make-file {:frames-1 [f0] :frames-2 []})
++            state (-> (live-state file 2)
++                      (assoc :viewer-sync-frame-id f2))
++            [nav :as navs] (navigations (watch-events @#'dv/after-file-updated state))]
++        (t/is (= 1 (count navs)))
++        (t/is (= 0 (get-in nav [:params :index])))))))
++
++(t/deftest zoom-is-recalculated-after-an-update
++  (let [f1    (uuid/custom 1 3)
++        file  (make-file {:frames-1 [f1] :frames-2 []})
++        state (-> (live-state file 0)
++                  (assoc :viewer-sync-frame-id f1)
++                  (assoc-in [:viewer-local :zoom-type] :fit))
++        types (mapv ptk/type (remove fn? (watch-events @#'dv/after-file-updated state)))]
++    (t/is (some #{::dv/zoom-to-fit} types))))
 -- 
 2.50.1 (Apple Git-155)
 
