@@ -1,4 +1,4 @@
-From f3003d04a57d987d1c314a21e1054efa67a82814 Mon Sep 17 00:00:00 2001
+From 7064aa3d57c4231a2eef0c4952682123f657bb84 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Wed, 4 Nov 2026 23:09:50 +0100
 Subject: [PATCH 2/3] BLENDER: Introduce branding and meta tags changes
