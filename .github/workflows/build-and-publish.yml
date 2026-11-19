@@ -5,15 +5,15 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Tag or ref to build (e.g. 2.16.2 or 2.16.2-blender)'
+        description: "Tag or ref to build (e.g. 2.18.6 or 2.18.6-blender)"
         required: true
       rebuild_cache:
-        description: 'Ignore existing buildcache and rebuild from scratch'
+        description: "Ignore existing buildcache and rebuild from scratch"
         type: boolean
         default: false
   push:
     tags:
-      - '*'
+      - "*"
 
 env:
   REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
