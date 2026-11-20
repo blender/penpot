@@ -1,7 +1,7 @@
-From 510c918660076e129d96d2e22554acfd4611b2a1 Mon Sep 17 00:00:00 2001
+From f6a9f9410f05ebbeb57a20dc428cf8f849e1a5b9 Mon Sep 17 00:00:00 2001
 From: Dalai Felinto <dalai@blender.org>
 Date: Sun, 15 Nov 2026 11:02:27 +0100
-Subject: [PATCH 3/3] BLENDER: Fix view mode not live
+Subject: [PATCH 4/4] BLENDER: Fix view mode not live
 
 PR: https://github.com/penpot/penpot/pull/12847
 ---
@@ -652,5 +652,5 @@ index e64a4d5f8f..1506ec3b05 100644
       (when has-fixed? fixed-layer-ref)
       not-fixed-include-ids fixed-include-ids fixed-clear-fills-ids
 -- 
-2.50.1 (Apple Git-155)
+2.53.0
 
