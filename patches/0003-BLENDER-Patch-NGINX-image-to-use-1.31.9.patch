@@ -1,0 +1,22 @@
+From 747f516ddde835053e5674461f9fbc4aa67f19cf Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Thu, 19 Nov 2026 15:24:20 +0100
+Subject: [PATCH 3/4] BLENDER: Patch NGINX image to use 1.31.9
+
+---
+ docker/images/Dockerfile.frontend | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/docker/images/Dockerfile.frontend b/docker/images/Dockerfile.frontend
+index 1be6ee9680..9aeea317e9 100644
+--- a/docker/images/Dockerfile.frontend
++++ b/docker/images/Dockerfile.frontend
+@@ -1,4 +1,4 @@
+-FROM dhi.io/nginx:1.31.8-debian13-dev@sha256:5f75855fe078ae96027706da06716fbe1c3dbb618fc603e61894e1b41adc56d7
++FROM dhi.io/nginx:1.31.9-debian13-dev@sha256:a00fd4492f974107bff3529e952e5f7edd3e6f0f8f747eeec5feeb40c04d1591
+ LABEL maintainer="Penpot <docker@penpot.app>"
+ 
+ ENV DEBIAN_FRONTEND=noninteractive
+-- 
+2.53.0
+

@@ -5,15 +5,20 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Tag or ref to build (e.g. 2.16.2 or 2.16.2-blender)'
+        description: "Tag or ref to build (e.g. 2.19.0 or 2.19.0-blender)"
         required: true
+      rebuild_cache:
+        description: "Ignore existing buildcache and rebuild from scratch"
+        type: boolean
+        default: false
   push:
     tags:
-      - '*'
+      - "*"
 
 env:
   REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
   REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+  REBUILD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.rebuild_cache || false }}
 
 jobs:
   build-and-push:
@@ -74,7 +79,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
+          no-cache: ${{ env.REBUILD_CACHE == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache
+          cache-from: ${{ env.REBUILD_CACHE != 'true' && format('type=registry,ref={0}/{1}:buildcache', env.REGISTRY_IMAGE, matrix.component) || '' }}
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}/${{ matrix.component }}:buildcache,mode=max

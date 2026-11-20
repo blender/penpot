@@ -1,7 +1,7 @@
-From 89b6470ce667a0a0a2b39aa77f719f92136338ca Mon Sep 17 00:00:00 2001
+From a65ca5f200735bd9a7198d4aee492297d474f244 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Wed, 4 Nov 2026 23:09:50 +0100
-Subject: [PATCH 2/3] BLENDER: Introduce branding and meta tags changes
+Subject: [PATCH 2/4] BLENDER: Introduce branding and meta tags changes
 
 ---
  frontend/resources/images/favicon.png       | Bin 1336 -> 24328 bytes
@@ -17120,7 +17120,7 @@ literal 0
 HcmV?d00001
 
 diff --git a/frontend/resources/templates/index.mustache b/frontend/resources/templates/index.mustache
-index 453197068e..4495c67a87 100644
+index 309025e605..84cac62d90 100644
 --- a/frontend/resources/templates/index.mustache
 +++ b/frontend/resources/templates/index.mustache
 @@ -3,19 +3,19 @@
@@ -17153,5 +17153,5 @@ index 453197068e..4495c67a87 100644
      <link id="theme" href="css/main.css?version={{& version_tag}}" rel="stylesheet" type="text/css" />
      <link href="css/ui.css?version={{& version_tag}}" rel="stylesheet" type="text/css" />
 -- 
-2.50.1 (Apple Git-155)
+2.53.0
 
