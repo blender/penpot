@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Tag or ref to build (e.g. 2.19.0 or 2.19.0-blender)"
+        description: "Tag or ref to build (e.g. 2.19.5 or 2.19.5-blender)"
         required: true
       rebuild_cache:
         description: "Ignore existing buildcache and rebuild from scratch"
